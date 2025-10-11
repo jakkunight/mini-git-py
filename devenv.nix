@@ -11,6 +11,7 @@
   # https://devenv.sh/packages/
   packages = with pkgs; [
     git
+    pandoc
   ];
 
   # https://devenv.sh/languages/
