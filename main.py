@@ -35,3 +35,8 @@ from abc import (
 # - Las ramas son simplemente referencias a commits específicos,
 #   de modo a no tener que usar sus hashes para poder referirnos
 #   a los mismos. Todo proyecto inicia con una rama 'master' o 'main'.
+#
+# > [!note] Referencia del 1er commit
+# > En el campo de referencia al commit padre del 1er commit, se coloca
+# > un `00000000000000000000000000000000000000000`, que corresponde al
+# > directorio 'vacío'.
