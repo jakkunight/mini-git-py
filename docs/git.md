@@ -29,3 +29,10 @@ object_database[hash] = content
 > En el campo de referencia al commit padre
 > del 1er commit, se coloca un `00000000000000000000000000000000000000000`, que
 > corresponde al directorio 'vacío'.
+
+## Sobre el merging
+
+Para hacer un merge, git usa 3 commits.
+
+- Un commit base, común a los commits que se quieren fusionar.
+- Un dos commits, que representan ramas divergentes.
