@@ -2,26 +2,16 @@
 # Un clon de Git, hecho con Python.
 
 import sys
-import os
-from treelib import Tree
-import hashlib
-from abc import (
-    ABC,
-    ABCMeta,
-    abstractmethod,
-)
+from modules import init_repo
 
-available_commands = {
-    "init": True,
-    "status": True,
-    "add": True,
-    "merge": {},
-    "log": True,
-    "checkout": {},
-    "commit": {},
-    "branch": {},
-    "diff": {},
-    "search": {},
-}
+if sys.argv[1] == "init":
+    init_repo.init()
+    exit(0)
 
-print(sys.argv)
+elif sys.argv[1] == "status":
+    print("Unimplemented")
+    exit(-1)
+else:
+    print("Comando inválido!")
+    print("Ejecute `mini-git-py --help` para obtener una lista de comandos a ejecutar.")
+    exit(1)
