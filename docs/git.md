@@ -51,8 +51,8 @@ Si vemos los **commits**, podemos ver la siguiente relación:
 
 ```mermaid
 graph LR
-  commit0{"Commit 0"}
-  commit1{"Commit 1"}
+  commit0(("Commit 0"))
+  commit1(("Commit 1"))
   tree1{"Tree 1"}
 
   commit1-->commit0
@@ -84,8 +84,8 @@ Como se puede apreciar, **todo camino termina en un blob**.
 
 ```mermaid
 graph LR
-  commit0("Commit 0")
-  commit1("Commit 1")
+  commit0(("Commit 0"))
+  commit1(("Commit 1"))
   tree1{"Tree 1"}
   tree2{"Tree2"}
   blob1["Blob 1"]
