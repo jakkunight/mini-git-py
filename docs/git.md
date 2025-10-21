@@ -50,8 +50,13 @@ punto inicial siguiendo los caminos en el grafo.
 Si vemos los **commits**, podemos ver la siguiente relación:
 
 ```mermaid
-("commit 1") => ["tree 1"]
-("commit 1") => ("commit 0")
+graph LR
+  commit0(("Commit 0"))
+  commit1(("Commit 1"))
+  tree1{"Tree 1"}
+
+  commit1-->commit0
+  commit1-->tree1
 ```
 
 O sea que, un **commit** cuenta con un camino hacia un tree, y otro hacia el
@@ -62,10 +67,35 @@ Un **tree**, o árbol, es en sí mismo una lista de punteros a dos tipos de nodo
 los **blobs** y **otros trees**.
 
 ```mermaid
-["tree 1"] => ["tree 2"]
-["tree 1"] => {"blob 1"}
-["tree 2"] => {"blob 2"}
-["tree 2"] => {"blob 3"}
+graph RL
+  tree1{"Tree 1"}
+  tree2{"Tree2"}
+  blob1["Blob 1"]
+  blob2["Blob 2"]
+  blob3["Blob 3"]
+
+  tree1-->tree2
+  tree1-->blob1
+  tree2-->blob2
+  tree2-->blob3
 ```
 
 Como se puede apreciar, **todo camino termina en un blob**.
+
+```mermaid
+graph LR
+  commit0(("Commit 0"))
+  commit1(("Commit 1"))
+  tree1{"Tree 1"}
+  tree2{"Tree2"}
+  blob1["Blob 1"]
+  blob2["Blob 2"]
+  blob3["Blob 3"]
+
+  commit1-->commit0
+  commit1-->tree1
+  tree1-->tree2
+  tree1-->blob1
+  tree2-->blob2
+  tree2-->blob3
+```
