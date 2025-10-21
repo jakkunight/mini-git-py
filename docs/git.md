@@ -36,3 +36,36 @@ Para hacer un merge, git usa 3 commits.
 
 - Un commit base, común a los commits que se quieren fusionar.
 - Un dos commits, que representan ramas divergentes.
+
+## Sobre Git y los Grafos acíclicos
+
+> Esta idea fue tomada de
+> [@Antonio Sarosi](https://youtu.be/LjwR--_ZUt8?t=521&si=YESM8xDNDr7M-pI3)
+> Muchas gracias por difundir este contenido en español.
+
+Podemos imaginar el _object-database_ como un **grafo acíclico**, esto es, un
+grafo en el que dado un punto de partida cualquiera, es imposible volver al
+punto inicial siguiendo los caminos en el grafo.
+
+Si vemos los **commits**, podemos ver la siguiente relación:
+
+```mermaid
+("commit 1") => ["tree 1"]
+("commit 1") => ("commit 0")
+```
+
+O sea que, un **commit** cuenta con un camino hacia un tree, y otro hacia el
+commit padre. Si este último camino **no existe**, entonces estamos ante el
+**primer commit del repositorio**.
+
+Un **tree**, o árbol, es en sí mismo una lista de punteros a dos tipos de nodos:
+los **blobs** y **otros trees**.
+
+```mermaid
+["tree 1"] => ["tree 2"]
+["tree 1"] => {"blob 1"}
+["tree 2"] => {"blob 2"}
+["tree 2"] => {"blob 3"}
+```
+
+Como se puede apreciar, **todo camino termina en un blob**.
