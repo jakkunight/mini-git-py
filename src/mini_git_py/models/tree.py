@@ -1,50 +1,55 @@
-import os
-from os.path import join, exists, isdir, isfile
+from mini_git_py.models.git_objects import GitObject, GitObjectType
+from hashlib import sha256
 
 
 class TreeEntry:
-    """
-    Una clase que representa una entrada en el `Tree`.
-    """
-
-    def __init__(self, permissions: int, entry_name: str, entry_hash: str):
-        # TODO:
-        # Mejorar la validación de permisos del archivo:
-        if permissions is None or permissions == 0:
-            raise TypeError("El dato provisto no es un permiso UNIX válido!")
-
-        final_path = join(self.dirpath, entry_name)
-        if not exists(final_path):
-            raise TypeError("El nombre de archivo provisto no existe!")
-
-        if isdir(final_path):
-            self.type = "tree"
-
-        if isfile(final_path):
-            self.type = "blob"
-
-        # TODO:
-        # Validar el hash ingresado.
-        object_dir: str = ""
-        object_filename: str = ""
-        entry_dir = entry_hash[0:2]
-        entry_filename = entry_hash[2:]
+    def __init__(self, dirname: str):
+        self.mode = "040000"
+        self.dirname = dirname
 
 
-class Tree:
-    def __init__(self, path: str):
-        if path == "" or path is None:
-            raise TypeError("La ruta provista está vacía!")
+class BlobEntry:
+    def __init__(self, filename: str):
+        self.mode = "100644"
+        self.filename = filename
 
-        if not exists(path):
-            raise FileNotFoundError("La ruta provista no existe!")
 
-        if not isdir(path):
-            raise IsADirectoryError("La ruta provista no es un directorio!")
+class Tree(GitObject):
+    def __init__(self, blob_entries: list[BlobEntry], tree_entries: list[TreeEntry]):
+        self.tree_entries = tree_entries
+        self.blob_entries = blob_entries
 
-        self.dirpath = path
+    def get_contet(self) -> str:
+        content_str: str = ""
+        separator: str = "\n"
+        inner_separator: str = " "
 
-    # TODO:
-    # Implementar la función para añadir entradas al árbol.
-    def add_blob(self):
-        pass
+        content_str += self.get_type()
+        content_str += separator
+
+        for entry in self.tree_entries:
+            content_str += entry.mode
+            content_str += inner_separator
+            content_str += entry.dirname
+            content_str += separator
+
+        for entry in self.blob_entries:
+            content_str += entry.mode
+            content_str += inner_separator
+            content_str += entry.filename
+            content_str += separator
+
+        return content_str
+
+    def compute_hash(self) -> str:
+        content: str = self.get_content()
+
+        content_bytes: bytes = content.encode("utf-8")
+        hash = sha256(content_bytes)
+
+        hex_str: str = hash.hexdigest()
+
+        return hex_str
+
+    def get_type(self) -> GitObjectType:
+        return GitObjectType.TREE
