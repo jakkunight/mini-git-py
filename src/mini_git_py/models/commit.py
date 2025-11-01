@@ -1,48 +1,55 @@
-from datetime import datetime, timezone
-from mini_git_py.models.author import Author
-from mini_git_py.models.git_objects import GitObject, GitObjectType
-from hashlib import sha256
+from mini_git_py.models.git_objects import GitObject
+import re
 
 
-class Commit(GitObject):
-    def __init__(self, author: Author, message: str, tree_hash: str, parent_hash: str):
-        if message == "" or message is None:
-            raise TypeError("No se puede asignar un mensaje vacío a un commit.")
-        if tree_hash == "" or tree_hash is None:
-            raise TypeError("Tree Hash inválido.")
-        if parent_hash == "" or parent_hash is None:
-            raise TypeError("Parent Hash inválido.")
-        self.author: Author = author
-        self.date = str(datetime.now(timezone.utc))
-        self.message = message
+class Commit:
+    author: str
+    email: str
+    message: str
+    type = "commit"
+    date: str
+    parents: tuple[str | None, str | None]
+    tree: str
 
-    def get_type(self) -> GitObjectType:
-        return GitObjectType.COMMIT
+    def __init__(self, author: str, email: str, message: str, parent: str, tree: str):
+        assert author != "", """
+            El nombre del autor no puede estar vacío.
+        """
+        assert re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email), """
+            El email ingresado es inválido.
+        """
+        assert message != "", """
+            El mensaje no puede estar vacío.
+        """
+        assert re.match(r"^[a-f0-9]+$", parent) and len(parent) == 32, """
+            El commit anterior ingresado es inválido.
+        """
+        assert re.match(r"^[a-f0-9]+$", tree) and len(tree) == 32, """
+            El tree ingresado es inválido.
+        """
 
-    def get_content(self) -> str:
-        separator: str = "\n"
-        content_str: str = ""
+        self.author = author
+        self.email = email
+        self.parents: list[str | None] = [parent, None]
+        self.tree = tree
 
-        content_str += self.get_type()
-        content_str += separator
+    def add_parent(self, parent: str):
+        assert re.match(r"^[a-f0-9]+$", parent) and len(parent) == 32, """
+            El commit anterior ingresado es inválido.
+        """
 
-        content_str += "Author: " + self.author.name
-        content_str += separator
-        content_str += "Email: " + self.author.email
-        content_str += separator
-        content_str += "Date: " + self.date
-        content_str += separator
-        content_str += "Message: " + self.message
-        content_str += separator
-        content_str += "Tree: " + self.tree_hash
-        content_str += separator
-        content_str += "Parent: " + self.parent_hash
+        self.parents.append(parent)
 
-        return content_str
+    def build_content(self) -> bytes:
+        buffer = f"tree {self.tree}\n"
+        for parent in self.parents:
+            buffer += f"parent {parent}\n"
+        buffer += f"author {self.author}\n"
+        buffer += f"email {self.email}\n"
 
-    def compute_hash(self) -> str:
-        content: str = self.get_content()
-        content_bytes: bytes = content.encode("utf-8")
-        hash = sha256(content_bytes)
-        hex_str = hash.hexdigest()
-        return hex_str
+        self.content = buffer
+
+        return bytes(buffer)
+
+    def compute_hash(self):
+        pass
