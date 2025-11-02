@@ -35,9 +35,10 @@ class GitObject:
             - {len(self.content)}B
         """
 
-        separator: str = "\n\r"
-        header: str = f"type {self.type}{separator}size {self.size}"
-        final_content: str = f"{header}{separator}{self.content}"
+        field_separator: str = "\n"
+        part_separator: str = "\n\n"
+        header: str = f"type {self.type}{field_separator}size {self.size}"
+        final_content: str = f"{header}{part_separator}{self.content}"
         calculated_sha: str = sha256(final_content.encode("utf-8")).hexdigest()
         assert self.sha == calculated_sha, f"""
             El contenido o el hash provisto no corresponden entre sí.
