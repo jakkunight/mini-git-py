@@ -1,17 +1,7 @@
 from mini_git_py.models.git_objects import GitObject
+from mini_git_py.models.references import Ref
 from gzip import compress, decompress
 from os import path, makedirs, getcwd
-from dataclasses import dataclass
-
-
-@dataclass
-class Ref:
-    name: str
-    sha: str
-
-    def __post_init__(self):
-        assert self.name != ""
-        assert len(self.sha) == 32
 
 
 class Repository:
