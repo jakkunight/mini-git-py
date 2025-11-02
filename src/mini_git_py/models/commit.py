@@ -8,7 +8,7 @@ class Commit:
     message: str
     type = "commit"
     date: str
-    parents: tuple[str | None, str | None]
+    parents: list[str | None]
     tree: str
 
     def __init__(self, author: str, email: str, message: str, parent: str, tree: str):
@@ -21,20 +21,24 @@ class Commit:
         assert message != "", """
             El mensaje no puede estar vacío.
         """
-        assert re.match(r"^[a-f0-9]+$", parent) and len(parent) == 32, """
+        assert re.match(r"^[a-f0-9]{64}$", parent), """
             El commit anterior ingresado es inválido.
         """
-        assert re.match(r"^[a-f0-9]+$", tree) and len(tree) == 32, """
+        assert re.match(r"^[a-f0-9]{64}$", tree), """
             El tree ingresado es inválido.
         """
 
         self.author = author
         self.email = email
-        self.parents: list[str | None] = [parent, None]
+        self.parents: list[str | None] = [parent]
         self.tree = tree
 
     def add_parent(self, parent: str):
-        assert re.match(r"^[a-f0-9]+$", parent) and len(parent) == 32, """
+        assert len(self.parents) <= 2, """
+            No se pueden asignar más commits padre al commit actual.
+            Sólo puede haber hasta dos commits padres por commit.
+        """
+        assert re.match(r"^[a-f0-9]{64}$", parent), """
             El commit anterior ingresado es inválido.
         """
 
