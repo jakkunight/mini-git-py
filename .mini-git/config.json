@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "repositorio_inicializado": true,
+  "rama_actual": "master",
+  "autor_predeterminado": {
+    "nombre": "",
+    "email": ""
+  }
+}

@@ -15,6 +15,8 @@ class Commit(GitObject):
         self.author: Author = author
         self.date = str(datetime.now(timezone.utc))
         self.message = message
+        self.tree_hash = tree_hash
+        self.parent_hash = parent_hash
 
     def get_type(self) -> GitObjectType:
         return GitObjectType.COMMIT

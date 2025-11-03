@@ -4,3 +4,5 @@ class Author:
             raise TypeError("El nombre provisto no puede ser vacío.")
         if email is None or email == "":
             raise TypeError("El email provisto no puede ser vacío.")
+        self.name = name
+        self.email = email

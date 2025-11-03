@@ -19,7 +19,7 @@ class Tree(GitObject):
         self.tree_entries = tree_entries
         self.blob_entries = blob_entries
 
-    def get_contet(self) -> str:
+    def get_content(self) -> str:
         content_str: str = ""
         separator: str = "\n"
         inner_separator: str = " "
