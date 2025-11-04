@@ -1,343 +1,348 @@
+# WARN:
+# Este código ha sido generado 100% con IA (GPT-5 free).
+# El proceso de elaboración corresponde a la implementación de la interfaz
+# `Repository`, que fue creada por @Santiago Wu. También se sumistraron como
+# entrada del prompt los tipos de datos `Commit`, `Blob`, `Tree`, `Ref`, `Tag`
+# y `TreeEntry`, lo que garantiza la consistencia y contexto suficientes para
+# la implementación.
+#
+# El código ha sido íntegramente analizado por @Santiago Wu.
+
+import os
+import gzip
+import hashlib
+import shutil
+from typing import List, Optional, Tuple
+from mini_git_py.models.repository import Repository
 from mini_git_py.models.commit import Commit
 from mini_git_py.models.blob import Blob
-from mini_git_py.models.tree import Tree
+from mini_git_py.models.tree import Tree, TreeEntry
 from mini_git_py.models.tag import Tag
 from mini_git_py.models.references import Ref
-from gzip import compress, decompress
-from os import makedirs, getcwd, remove, listdir
-from os.path import join, exists
-from hashlib import sha256
+
+FIELD_SEP = chr(0x1C)
+SECTION_SEP = chr(0x1D)
 
 
-class LocalRepository:
-    _default_head_ref: str = "master"
-    _content_encoding: str = "utf-8"
-    _repository_dir: str | None = None
-    _repository_store: str | None = None
-    _object_store: str | None = None
-    _refs_store: str | None = None
-    _head_store: str | None = None
-    _head_ref: str = _default_head_ref
-    _refs: list[str] = [_default_head_ref]
-    _index_store: str | None
+class LocalRepository(Repository):
+    work_path: str
+    repo_path: str
+    objects_path: str
+    refs_path: str
+    head_path: str
+    index_path: str
 
-    # INFO: Delimitadores ASCII
-    # Se usan los delimitadores ASCII estándar para delimitar información guardada en el repositorio.
-    _record_separator: str = "\x1e"
-    _unit_separator: str = "\x1f"
-    _group_separator: str = "\x1d"
+    def __init__(self, path: Optional[str] = None) -> None:
+        self.work_path = os.path.abspath(path or os.getcwd())
+        self.repo_path = os.path.join(self.work_path, ".mg")
+        self.objects_path = os.path.join(self.repo_path, "objects")
+        self.refs_path = os.path.join(self.repo_path, "refs")
+        self.head_path = os.path.join(self.repo_path, "HEAD")
+        self.index_path = os.path.join(self.repo_path, "index")
 
-    def __init__(self):
-        pass
+    # --------------------------
+    # Init repo
+    # --------------------------
+    def init(self, path: Optional[str] = None) -> Optional[str]:
+        self.work_path = os.path.abspath(path or os.getcwd())
+        self.repo_path = os.path.join(self.work_path, ".mg")
+        self.objects_path = os.path.join(self.repo_path, "objects")
+        self.refs_path = os.path.join(self.repo_path, "refs")
+        self.head_path = os.path.join(self.repo_path, "HEAD")
+        self.index_path = os.path.join(self.repo_path, "index")
 
-    def init(self):
-        if self._repository_dir is not None:
-            return
-
-        self._repository_dir = getcwd()
-        self._repository_store: str = join(self._repository_dir, ".mg")
-        self._object_store: str = join(self._repository_store, "objects")
-        self._refs_store: str = join(self._repository_store, "refs")
-        self._head_store: str = join(self._repository_store, "HEAD")
-        self._index_store: str = join(self._repository_store, "index")
-
-        makedirs(self._repository_store)
-        makedirs(self._object_store)
-        makedirs(self._refs_store)
-        head = open(self._head_store, "xb")
-        head.write(self._head_ref.encode(self._content_encoding))
-        head.close()
-
-    def save_commit(self, commit: Commit) -> str | None:
-        field_separator: str = "\t"
-        separator: str = "\n\n"
-        body: str = f"tree {commit.tree}{field_separator}"
-        for parent in commit.parents:
-            body += f"parent {parent}{field_separator}"
-
-        body += f"date {commit.date}{field_separator}"
-        body += f"author {commit.author}{field_separator}"
-        body += f"email {commit.email}{field_separator}"
-        body += f"message {commit.message}"
-
-        header: str = f"type {commit.type}{field_separator}size {len(body.encode(self._content_encoding))}"
-        buffer: str = f"{header}{separator}{body}"
-        sha: str = sha256(buffer.encode(self._content_encoding)).hexdigest()
-        object_path: str = join(self._object_store, sha[0:4], sha[4:])
-
-        compressed_bytes = compress(buffer.encode(self._content_encoding), 9)
-        file = open(
-            object_path,
-            "wb",
-        )
-
-        file.write(compressed_bytes)
-        file.close()
-
-        return sha
-
-    def save_tree(self, tree: Tree) -> str | None:
-        field_separator: str = "\t"
-        separator: str = "\n\n"
-        entry_separator: str = "\n"
-        body: str = ""
-        for entry in tree.entries:
-            body += f"mode {entry.mode}{field_separator}"
-            body += f"name {entry.name}{field_separator}"
-            body += f"sha {entry.sha}{entry_separator}"
-
-        header: str = f"type {tree.type}{field_separator}size {len(body.encode(self._content_encoding))}"
-        buffer: str = f"{header}{separator}{body}"
-        sha: str = sha256(buffer.encode(self._content_encoding)).hexdigest()
-        object_path: str = join(self._object_store, sha[0:4], sha[4:])
-
-        compressed_bytes = compress(buffer.encode(self._content_encoding), 9)
-        file = open(
-            object_path,
-            "wb",
-        )
-
-        file.write(compressed_bytes)
-        file.close()
-
-        return sha
-
-    def save_blob(self, blob: Blob) -> str | None:
-        field_separator: str = "\t"
-        separator: str = "\n\n"
-        body: bytes = blob.content
-        header: str = f"type {blob.type}{field_separator}size{len(body)}"
-        buffer: str = f"{header}{separator}{body}"
-        sha: str = sha256(buffer.encode(self._content_encoding)).hexdigest()
-        object_path: str = join(self._object_store, sha[0:4], sha[4:])
-
-        compressed_bytes = compress(buffer.encode(self._content_encoding), 9)
-        file = open(
-            object_path,
-            "wb",
-        )
-
-        file.write(compressed_bytes)
-        file.close()
-
-        return sha
-
-    def save_tag(self, tag: Tag) -> str | None:
-        field_separator: str = "\t"
-        separator: str = "\n\n"
-        body: str = f"name {tag.name}{field_separator}commit {tag.commit}"
-        header: str = f"type {tag.type}{field_separator}size {len(body.encode(self._content_encoding))}"
-        buffer: str = f"{header}{separator}{body}"
-        sha: str = sha256(buffer.encode(self._content_encoding)).hexdigest()
-        object_path: str = join(self._object_store, sha[0:4], sha[4:])
-
-        compressed_bytes = compress(buffer.encode(self._content_encoding), 9)
-        file = open(
-            object_path,
-            "wb",
-        )
-
-        file.write(compressed_bytes)
-        file.close()
-
-        return sha
-
-    def load_commit(self, sha: str) -> Commit | None:
-        field_separator: str = "\t"
-        separator: str = "\n\n"
-        file = open(
-            join(self._repository_dir, self._object_store, sha[0:4], sha[4:]), "rb"
-        )
-
-        compressed_bytes = file.read()
-        decompressed_bytes = decompress(compressed_bytes)
-        content_str = decompressed_bytes.decode(self._content_encoding)
-        [header, body] = content_str.split(separator)
-        [type, size] = header.split(field_separator)
-
-        [label, value] = type.split(" ")
-        if label == "type" and value != "commit":
+        try:
+            os.makedirs(self.repo_path, exist_ok=True)
+            os.makedirs(self.objects_path, exist_ok=True)
+            os.makedirs(self.refs_path, exist_ok=True)
+            if not os.path.exists(self.head_path):
+                with open(self.head_path, "w") as f:
+                    f.write("ref: refs/main")
+            return self.repo_path
+        except Exception:
             return None
 
+    # --------------------------
+    # Formato estilo Git + gzip
+    # --------------------------
+    def _encode(self, obj_type: str, body: bytes) -> bytes:
+        header: str = f"{obj_type}{FIELD_SEP}{len(body)}"
+        raw: bytes = header.encode() + SECTION_SEP.encode() + body
+        return gzip.compress(raw)
+
+    def _decode(self, compressed: bytes) -> Tuple[str, bytes]:
+        raw: bytes = gzip.decompress(compressed)
+        header, body = raw.split(SECTION_SEP.encode(), 1)
+        obj_type, _size = header.decode().split(FIELD_SEP)
+        return obj_type, body
+
+    def _save_raw(self, obj_type: str, body: bytes) -> str:
+        data: bytes = self._encode(obj_type, body)
+        sha: str = hashlib.sha256(data).hexdigest()
+        prefix, suffix = sha[:4], sha[4:]
+        dirpath: str = os.path.join(self.objects_path, prefix)
+        os.makedirs(dirpath, exist_ok=True)
+        filepath: str = os.path.join(dirpath, suffix)
+        with open(filepath, "wb") as f:
+            f.write(data)
+        return sha
+
+    def _load_raw(self, sha: str) -> Optional[Tuple[str, bytes]]:
+        prefix, suffix = sha[:4], sha[4:]
+        filepath: str = os.path.join(self.objects_path, prefix, suffix)
+        if not os.path.exists(filepath):
+            return None
+        with open(filepath, "rb") as f:
+            compressed: bytes = f.read()
+        return self._decode(compressed)
+
+    def load_object(self, sha: str) -> Optional[Tuple[str, bytes]]:
+        return self._load_raw(sha)
+
+    # --------------------------
+    # BLOBS
+    # --------------------------
+    def save_blob(self, blob: Blob) -> Optional[str]:
+        try:
+            header: bytes = f"{blob.mode}\n{blob.name}\n".encode()
+            body: bytes = header + blob.content
+            return self._save_raw("blob", body)
+        except Exception:
+            return None
+
+    def load_blob(self, sha: str) -> Optional[Blob]:
+        out = self._load_raw(sha)
+        if not out:
+            return None
+        _, body = out
+        mode, name, content = body.split(b"\n", 2)
+        return Blob(name=name.decode(), mode=int(mode.decode()), content=content)
+
+    # --------------------------
+    # TREES
+    # --------------------------
+    def save_tree(self, tree: Tree) -> Optional[str]:
+        try:
+            lines: List[str] = [f"name {tree.name}"]
+            for e in tree.entries:
+                lines.append(f"{e.mode} {e.name} {e.sha} {e.obj_type}")
+            body: bytes = "\n".join(lines).encode()
+            return self._save_raw("tree", body)
+        except Exception:
+            return None
+
+    def load_tree(self, sha: str) -> Optional[Tree]:
+        out = self._load_raw(sha)
+        if not out:
+            return None
+        _, body = out
+        lines: List[str] = body.decode().splitlines()
+        tree_name: str = lines[0].split(" ", 1)[1]
+        entries: List[TreeEntry] = []
+        for line in lines[1:]:
+            mode, name, entry_sha, obj_type = line.split(" ", 3)
+            entries.append(TreeEntry(int(mode), name, entry_sha, obj_type))
+        return Tree(name=tree_name, entries=entries)
+
+    # --------------------------
+    # COMMITS
+    # --------------------------
+    def save_commit(self, commit: Commit) -> Optional[str]:
+        try:
+            parts: List[str] = [f"tree {commit.tree}"]
+            for p in commit.parents:
+                if p:
+                    parts.append(f"parent {p}")
+            parts.append(f"author {commit.author} <{commit.email}>")
+            parts.append(f"date {commit.date}")
+            parts.append("message")
+            parts.append(commit.message)
+            body: bytes = "\n".join(parts).encode()
+            return self._save_raw("commit", body)
+        except Exception:
+            return None
+
+    def load_commit(self, sha: str) -> Optional[Commit]:
+        out = self._load_raw(sha)
+        if not out:
+            return None
+        _, body = out
+        lines: List[str] = body.decode().split("\n")
+        msg_index: int = lines.index("message")
+        message: str = "\n".join(lines[msg_index + 1 :])
         tree: str = ""
-        parents: list[str] = []
+        parents: List[str] = []
         author: str = ""
         email: str = ""
         date: str = ""
-        message: str = ""
-        for field in body.split(field_separator):
-            [label, value] = field.split(" ")
-            if label == "tree":
-                continue
-            elif label == "parent":
-                continue
-            elif label == "author":
-                continue
-            elif label == "email":
-                continue
-            elif label == "date":
-                continue
-            elif label == "message":
-                continue
-            else:
-                continue
+        for line in lines[:msg_index]:
+            if line.startswith("tree "):
+                tree = line.split(" ", 1)[1]
+            elif line.startswith("parent "):
+                parents.append(line.split(" ", 1)[1])
+            elif line.startswith("author "):
+                a = line[len("author ") :]
+                author, mail = a.rsplit(" ", 1)
+                email = mail.strip("<>")
+            elif line.startswith("date "):
+                date = line.split(" ", 1)[1]
+        return Commit(
+            author=author,
+            email=email,
+            message=message,
+            date=date,
+            parents=parents,
+            tree=tree,
+        )
 
-        pass
-
-    def load_tree(self, sha: str) -> Tree | None:
-        #     field_separator: str = "\n"
-        #     separator: str = "\n\n"
-        #     file = open(
-        #         join(self.repository_dir, self.object_store, sha[0:4], sha[4:]), "rb"
-        #     )
-
-        #     compressed_bytes = file.read()
-        #     decompressed_bytes = decompress(compressed_bytes)
-        #     content_str = decompressed_bytes.decode(self.content_encoding)
-        #     [header, content] = content_str.split(separator)
-        #     [type, size] = header.split(field_separator)
-        pass
-
-    def load_blob(self, sha: str) -> Blob | None:
-        #     field_separator: str = "\n"
-        #     separator: str = "\n\n"
-        #     file = open(
-        #         join(self.repository_dir, self.object_store, sha[0:4], sha[4:]), "rb"
-        #     )
-
-        #     compressed_bytes = file.read()
-        #     decompressed_bytes = decompress(compressed_bytes)
-        #     content_str = decompressed_bytes.decode(self.content_encoding)
-        #     [header, content] = content_str.split(separator)
-        #     [type, size] = header.split(field_separator)
-        pass
-
-    def load_tag(self, sha: str) -> Tag | None:
-        #     field_separator: str = "\n"
-        #     separator: str = "\n\n"
-        #     file = open(
-        #         join(self.repository_dir, self.object_store, sha[0:4], sha[4:]), "rb"
-        #     )
-
-        #     compressed_bytes = file.read()
-        #     decompressed_bytes = decompress(compressed_bytes)
-        #     content_str = decompressed_bytes.decode(self.content_encoding)
-        #     [header, content] = content_str.split(separator)
-        #     [type, size] = header.split(field_separator)
-        pass
-
-    # def store_object(self, object: GitObject):
-    #     object_path: str = join(self.object_store, object.sha[0:4], object.sha[4:])
-    #     assert not exists(object_path)
-    #     if object.type == "tree":
-    #         # TODO: implement tree content validation
-    #         pass
-    #     elif object.type == "commit":
-    #         # TODO: implement commit content validation
-    #         pass
-    #     elif object.type == "tag":
-    #         # TODO: implement tag content validation
-    #         pass
-    #     else:
-    #         return
-    #     field_separator: str = "\n"
-    #     part_separator: str = "\n\n"
-    #     header: str = f"{object.type}{field_separator}{object.size}"
-    #     object_content: str = f"{header}{part_separator}{object.content}"
-    #     compressed_bytes = compress(object_content.encode(self.content_encoding), 9)
-    #     file = open(
-    #         object_path,
-    #         "wb",
-    #     )
-
-    #     file.write(compressed_bytes)
-    #     file.close()
-
-    # def load_object(self, sha: str) -> GitObject:
-    #     field_separator: str = "\n"
-    #     part_separator: str = "\n\n"
-    #     file = open(
-    #         join(self.repository_dir, self.object_store, sha[0:4], sha[4:]), "rb"
-    #     )
-
-    #     compressed_bytes = file.read()
-    #     decompressed_bytes = decompress(compressed_bytes)
-    #     content_str = decompressed_bytes.decode(self.content_encoding)
-    #     [header, content] = content_str.split(part_separator)
-    #     [type, size] = header.split(field_separator)
-    #     return GitObject(sha, type, int(size), content.encode(self.content_encoding))
-
-    def save_reference(self, ref: Ref):
-        ref_path = join(self._refs_store, ref.name)
-        assert not exists(ref_path), f"""
-            La referencia ya existe.
-
-            Valor provisto:
-            - {ref.name}
-        """
-
-        commit_path = join(self._object_store, ref.sha[0:4])
-        assert not exists(commit_path), f"""
-            El commit provisto por esta referencia no existe.
-
-            Valor provisto:
-            - {ref.sha}
-        """
-
-        ref_file = open(ref_path, "xt")
-        ref_file.write(ref.sha)
-
-    def update_reference(self, ref: Ref):
-        ref_path = join(self._refs_store, ref.name)
-        assert exists(ref_path), f"""
-            La referencia no existe.
-
-            Valor provisto:
-            - {ref.name}
-        """
-
-        commit_path = join(self._object_store, ref.sha[0:4])
-        assert not exists(commit_path), f"""
-            El commit provisto por esta referencia no existe.
-
-            Valor provisto:
-            - {ref.sha}
-        """
-
-        ref_file = open(ref_path, "xt")
-        ref_file.write(ref.sha)
-
-    def delete_reference(self, ref_name):
-        ref_path: str = join(self._refs_store, ref_name)
-        assert exists(ref_path), f"""
-            La referencia no existe.
-
-            Valor provisto:
-            - {ref_name}
-        """
-
-        remove(ref_path)
-
-    def list_references(self) -> list[Ref] | None:
-        references: list[Ref] = []
-        ref_store = listdir(self._refs_store)
-        if len(ref_store) == 0:
+    # --------------------------
+    # TAGS
+    # --------------------------
+    def save_tag(self, tag: Tag) -> Optional[str]:
+        try:
+            body: bytes = f"tag {tag.name}\nref {tag.commit}\n".encode()
+            return self._save_raw("tag", body)
+        except Exception:
             return None
 
-        for entry in ref_store:
-            file = open(join(self._refs_store, entry), "rt")
-            ref_sha: str = file.read()
-            references.append(Ref(entry, ref_sha))
+    def load_tag(self, sha: str) -> Optional[Tag]:
+        out = self._load_raw(sha)
+        if not out:
+            return None
+        _, body = out
+        name: str = ""
+        commit: str = ""
+        for line in body.decode().splitlines():
+            if line.startswith("tag "):
+                name = line.split(" ", 1)[1]
+            elif line.startswith("ref "):
+                commit = line.split(" ", 1)[1]
+        return Tag(name=name, commit=commit)
 
-        return references
+    # --------------------------
+    # REFERENCIAS
+    # --------------------------
+    def save_ref(self, ref: Ref) -> Optional[str]:
+        try:
+            filepath: str = os.path.join(self.refs_path, ref.name)
+            with open(filepath, "w") as f:
+                f.write(ref.sha)
+            return ref.sha
+        except Exception:
+            return None
 
-    def update_head(self, ref: Ref):
-        ref_path: str = join(self._refs_store, ref.name)
-        head = open(self._head_store, "wt")
-        head.write(ref.name)
-        assert exists(ref_path), f"""
-            La referencia no existe.
+    def load_ref(self, name: str) -> Optional[Ref]:
+        filepath: str = os.path.join(self.refs_path, name)
+        if not os.path.exists(filepath):
+            return None
+        with open(filepath, "r") as f:
+            sha: str = f.read().strip()
+        return Ref(name=name, sha=sha)
 
-            Valor provisto:
-            - {ref.name}
-        """
+    def update_ref(self, ref: Ref) -> Optional[str]:
+        old: Optional[Ref] = self.load_ref(ref.name)
+        self.save_ref(ref)
+        return old.sha if old else None
+
+    def delete_ref(self, name: str) -> Optional[str]:
+        old: Optional[Ref] = self.load_ref(name)
+        if old:
+            os.remove(os.path.join(self.refs_path, name))
+            return old.sha
+        return None
+
+    def list_refs(self) -> Optional[List[Ref]]:
+        try:
+            return [self.load_ref(f) for f in os.listdir(self.refs_path)]
+        except Exception:
+            return None
+
+    def log_ref(self, name: str) -> Optional[List[Commit]]:
+        ref: Optional[Ref] = self.load_ref(name)
+        if not ref:
+            return None
+        commits: List[Commit] = []
+        sha: Optional[str] = ref.sha
+        while sha:
+            c: Optional[Commit] = self.load_commit(sha)
+            if not c:
+                break
+            commits.append(c)
+            sha = c.parents[0] if c.parents else None
+        return commits
+
+    def log_refs(self) -> Optional[List[Commit]]:
+        seen: dict = {}
+        for r in self.list_refs() or []:
+            for c in self.log_ref(r.name) or []:
+                seen[c.tree] = c
+        return list(seen.values())
+
+    def update_head_ref(self, ref: Ref) -> Optional[str]:
+        old: Optional[str] = None
+        if os.path.exists(self.head_path):
+            with open(self.head_path, "r") as f:
+                old = f.read().strip()
+        with open(self.head_path, "w") as f:
+            f.write(ref.sha)
+        return old
+
+    def update_index(self, working_tree: Tree) -> Optional[str]:
+        sha: Optional[str] = self.save_tree(working_tree)
+        if sha:
+            with open(self.index_path, "w") as f:
+                f.write(sha)
+        return sha
+
+
+# -------------------------------------------------------
+# WORKING COPY / CHECKOUT
+# -------------------------------------------------------
+class WorkingCopy:
+    repo: LocalRepository
+    work_path: str
+
+    def __init__(self, repo: LocalRepository) -> None:
+        self.repo = repo
+        self.work_path = repo.work_path
+
+    def checkout(self, commit_sha: str) -> Optional[str]:
+        commit: Optional[Commit] = self.repo.load_commit(commit_sha)
+        if commit is None:
+            return None
+        tree: Optional[Tree] = self.repo.load_tree(commit.tree)
+        if tree is None:
+            return None
+        self._clear_working_directory()
+        self._restore_tree(tree, self.work_path)
+        return commit_sha
+
+    def _clear_working_directory(self) -> None:
+        for item in os.listdir(self.work_path):
+            if item == ".mg":
+                continue
+            full: str = os.path.join(self.work_path, item)
+            if os.path.isdir(full):
+                shutil.rmtree(full)
+            else:
+                os.remove(full)
+
+    def _restore_tree(self, tree: Tree, path: str) -> None:
+        for entry in tree.entries:
+            full_path: str = os.path.join(path, entry.name)
+            if entry.obj_type == "tree":
+                os.makedirs(full_path, exist_ok=True)
+                sub_tree: Tree | None = self.repo.load_tree(entry.sha)
+                if sub_tree is None:
+                    raise ValueError("El tree está corrupto")
+                self._restore_tree(sub_tree, full_path)
+            elif entry.obj_type == "blob":
+                blob: Blob | None = self.repo.load_blob(entry.sha)
+                if blob is None:
+                    raise ValueError("El blob está corrupto.")
+                with open(full_path, "wb") as f:
+                    f.write(blob.content)
+                if entry.mode & 0o111:
+                    os.chmod(full_path, 0o755)
+                else:
+                    os.chmod(full_path, 0o644)
