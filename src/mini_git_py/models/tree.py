@@ -7,6 +7,7 @@ class TreeEntry:
     mode: int
     name: str
     sha: str
+    obj_type: str
 
     def __post_init__(self):
         assert self.name != "", """
@@ -15,6 +16,10 @@ class TreeEntry:
 
         assert re.match(r"^[a-f0-9]{64}$", self.sha), """
             El tree ingresado es inválido.
+        """
+
+        assert self.obj_type in ("blob", "tree"), """
+            El tipo debe ser "blob" o "tree".
         """
 
 

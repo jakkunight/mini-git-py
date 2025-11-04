@@ -9,7 +9,7 @@ class Commit:
     message: str
     type = "commit"
     date: str
-    parents: list[str | None]
+    parents: list[str]
     tree: str
 
     def __post_init__(self):
@@ -25,8 +25,6 @@ class Commit:
             El mensaje no puede estar vacío.
         """
         for parent in self.parents:
-            if parent is None:
-                continue
             assert re.match(r"^[a-f0-9]{64}$", parent), """
                 El commit anterior ingresado es inválido.
             """
