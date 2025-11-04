@@ -1,79 +1,214 @@
-from mini_git_py.models.git_objects import GitObject
-from gzip import compress, decompress
-from os import path, makedirs, getcwd
-from dataclasses import dataclass
+from mini_git_py.models.commit import Commit
+from mini_git_py.models.blob import Blob
+from mini_git_py.models.tree import Tree
+from mini_git_py.models.tag import Tag
+from mini_git_py.models.references import Ref
+from abc import ABC, abstractmethod
 
 
-@dataclass
-class Ref:
-    name: str
-    sha: str
+class Repository(ABC):
+    """
+    Una interfaz que representa un repositorio.
 
-    def __post_init__(self):
-        assert self.name != ""
-        assert len(self.sha) == 32
+    Permite abstraer las operaciones realizadas sobre los objetos que puede guardar y recuperar.
 
+    La clase que implementa esta interfaz es reponsable de la validación y el formato de archivo y compresión de los datos.
 
-class Repository:
-    default_head_ref: str = "master"
-    content_encoding: str = "utf-8"
-    repository_dir: str | None = None
-    repository_store: str | None = None
-    object_store: str | None = None
-    refs_store: str | None = None
-    head_store: str | None = None
-    head_ref: str = default_head_ref
-    refs: list[str] = [default_head_ref]
+    La clase que haga uso de esta interfaz, es responsable de proveer los tipos de datos validados y de hacer el manejo de errores correspondiente en casos de fallos.
+    """
 
-    def __init__(self):
+    @abstractmethod
+    def init(self, path: str | None) -> str | None:
+        """
+        Inicializa un repositorio en la carpeta provista. Si la capeta es `None`, entonces se usa la carpeta actual como repositorio.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
         pass
 
-    def init(self):
-        if self.repository_dir is not None:
-            return
+    @abstractmethod
+    def save_commit(self, commit: Commit) -> str | None:
+        """
+        Toma como entrada un `Commit` y lo almacena en el repositorio.
 
-        self.repository_dir = getcwd()
-        self.repository_store: str = path.join(self.repository_dir, ".mg")
-        self.object_store: str = path.join(self.repository_store, "objects")
-        self.refs_store: str = path.join(self.repository_store, "refs")
-        self.head_store: str = path.join(self.repository_store, "HEAD")
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del objeto creado.
 
-        makedirs(self.repository_store)
-        makedirs(self.object_store)
-        makedirs(self.refs_store)
-        head = open(self.head_store, "xb")
-        head.write(self.head_ref.encode(self.content_encoding))
-        head.close()
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
 
-    def store_object(self, object: GitObject):
-        field_separator: str = "\n"
-        part_separator: str = "\n\n"
-        header: str = f"{object.type}{field_separator}{object.size}"
-        object_content: str = f"{header}{part_separator}{object.content}"
-        compressed_bytes = compress(object_content.encode(self.content_encoding), 9)
-        file = open(
-            path.join(
-                self.repository_dir, self.object_store, object.sha[0:4], object.sha[4:]
-            ),
-            "wb",
-        )
+    @abstractmethod
+    def load_commit(self, sha: str) -> Commit | None:
+        """
+        Toma como entrada un SHA-256 y recupera un `Commit` del repositorio.
 
-        file.write(compressed_bytes)
-        file.close()
+        Si la operación tuvo éxito, entonces retorna el `Commit`.
 
-    def load_object(self, sha: str) -> GitObject:
-        field_separator: str = "\n"
-        part_separator: str = "\n\n"
-        file = open(
-            path.join(self.repository_dir, self.object_store, sha[0:4], sha[4:]), "rb"
-        )
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
 
-        compressed_bytes = file.read()
-        decompressed_bytes = decompress(compressed_bytes)
-        content_str = decompressed_bytes.decode(self.content_encoding)
-        [header, content] = content_str.split(part_separator)
-        [type, size] = header.split(field_separator)
-        return GitObject(sha, type, int(size), content.encode(self.content_encoding))
+    @abstractmethod
+    def save_tree(self, tree: Tree) -> str | None:
+        """
+        Toma como entrada un `Tree` y lo almacena en el repositorio.
 
-    def add_ref(self):
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del objeto creado.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def load_tree(self, sha: str) -> Tree | None:
+        """
+        Toma como entrada un SHA-256 y recupera un `Tree` del repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el `tree`.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def save_blob(self, blob: Blob) -> str | None:
+        """
+        Toma como entrada un `Blob` y lo almacena en el repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del objeto creado.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def load_blob(self, sha: str) -> Blob | None:
+        """
+        Toma como entrada un SHA-256 y recupera un `Blob` del repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el `Blob`.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def save_tag(self, tag: Tag) -> str | None:
+        """
+        Toma como entrada un `Tag` y lo almacena en el repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del objeto creado.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def load_tag(self, sha: str) -> Tag | None:
+        """
+        Toma como entrada un SHA-256 y recupera un `Tag` del repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el `Tag`.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def save_ref(self, ref: Ref) -> str | None:
+        """
+        Toma como entrada un `Ref` y lo almacena en el repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del `Commit` referenciado.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def load_ref(self, name: str) -> Ref | None:
+        """
+        Toma como entrada el nombre de una `Ref` y recupera el SHA-256 del `Commit` referenciado del repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el `Ref`.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def update_ref(self, ref: Ref) -> str | None:
+        """
+        Toma como entrada una `Ref` existente y la actualiza en el repositorio. También actualiza el log de la referencia, permitiendo reconstruir el historial de cambios de esa referencia.
+
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del antiguo `Commit` referenciado.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def delete_ref(self, name: str) -> str | None:
+        """
+        Toma como entrada el nombre de una `Ref` y la elimina del repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del último `Commit` referenciado.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def list_refs(self) -> list[Ref] | None:
+        """
+        Recupera todas las `Ref` del repositorio.
+
+        Si la operación tuvo éxito, entonces retorna una `list[Ref]`.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def log_ref(self, name: str) -> list[Commit] | None:
+        """
+        Reconstruye el historial de cambios de una `Ref`.
+
+        Si la operación tuvo éxito, entonces retorna una `list[Commit]`.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def log_refs(self) -> list[Commit] | None:
+        """
+        Reconstruye el historial de cambios de todas las `Ref` del repositorio. Garantiza que los `Commit` sean únicos, pero no reconstruye las ramificaciones. Es responsabilidad de quien invoque a este método realizar tal formato
+
+        Si la operación tuvo éxito, entonces retorna una `list[Commit]`.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+
+    @abstractmethod
+    def update_head_ref(self, ref: Ref) -> str | None:
+        """
+        Actualiza la referencia HEAD.
+
+        Si la operación tuvo éxito, entonces devuelve el SHA-256 del `Commit` actualmente referenciado.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+
+        """
+        pass
+
+    @abstractmethod
+    def update_index(self, working_tree: Tree) -> str | None:
+        """
+        Toma como entrada el working tree (`Tree`) y lo almacena en el index para luego referenciarlo y hacer un `Commit`. Esto es el "staging area" del repositorio.
+
+        Si la operación tuvo éxito, entonces retorna el SHA-256 del working tree actual.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
         pass

@@ -1,10 +1,19 @@
-class CommitReference:
-    def __init__(self, name: str, commit_hash: str):
-        if commit_hash == "":
-            raise TypeError("El hash provisto no puede estar vacío.")
+from dataclasses import dataclass
+import re
 
-        if name == "":
-            raise TypeError("El nombre de la referencia no puede ser nulo.")
 
-        self.commit_hash = commit_hash
-        self.name = name
+@dataclass
+class Ref:
+    name: str
+    sha: str
+
+    def __post_init__(self):
+        assert self.name != "", """
+            El nombre de la referencia no puede estar vacío.
+        """
+        assert re.match(r"^[a-f0-9]{64}$", self.sha), f"""
+            El hash provisto es inválido.
+
+            Valor provisto:
+            - {self.sha}
+        """
