@@ -104,9 +104,9 @@ class Repository(ABC):
         pass
 
     @abstractmethod
-    def load_tag(self, sha: str) -> Tag | None:
+    def load_tag(self, name: str) -> Tag | None:
         """
-        Toma como entrada un SHA-256 y recupera un `Tag` del repositorio.
+        Toma como entrada el nombre de una `Ref` y recupera el `Tag` del repositorio.
 
         Si la operación tuvo éxito, entonces retorna el `Tag`.
 
