@@ -1,13 +1,10 @@
-# TODO:
-# Definir la interfaz del programa para el repositorio.
-
 from typing import Optional, List
 from abc import ABC, abstractmethod
 
-from mini_git_py.models.repository import Repository
-from mini_git_py.models.commit import Commit
-from mini_git_py.models.references import Ref
-from mini_git_py.models.tag import Tag
+from .repository import Repository
+from .commit import Commit
+from .references import Ref
+from .tag import Tag
 
 
 class VersionControlSystem(ABC):

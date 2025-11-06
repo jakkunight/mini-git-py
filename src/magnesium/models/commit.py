@@ -4,6 +4,10 @@ import re
 
 @dataclass
 class Commit:
+    """
+    Una clase que representa un commit. Un commit es un snapshot inmutable del estado del working directory en una fecha concreta.
+    """
+
     author: str
     email: str
     message: str

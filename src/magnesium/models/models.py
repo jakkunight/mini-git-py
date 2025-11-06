@@ -1,9 +1,147 @@
-from mini_git_py.models.commit import Commit
-from mini_git_py.models.blob import Blob
-from mini_git_py.models.tree import Tree
-from mini_git_py.models.tag import Tag
-from mini_git_py.models.references import Ref
+from dataclasses import dataclass
+import re
 from abc import ABC, abstractmethod
+
+
+@dataclass
+class Blob:
+    """
+    Una clase que representa el contenido de un archivo sin ningún metadato. Sus campos pueden estar vacíos, a excepción del tipo, que es constante.
+    """
+
+    name: str
+    mode: int
+    content: bytes
+    type = "blob"
+
+    def __post_init__(self):
+        assert self.type == "type", """
+            El tipo del blob es constante y no debe ser modificado!
+        """
+
+
+@dataclass
+class Ref:
+    name: str
+    sha: str
+
+    def __post_init__(self):
+        assert self.name != "", """
+            El nombre de la referencia no puede estar vacío.
+        """
+        assert re.match(r"^[a-f0-9]{64}$", self.sha), f"""
+            El hash provisto es inválido.
+
+            Valor provisto:
+            - {self.sha}
+        """
+
+
+@dataclass
+class Commit:
+    """
+    Una clase que representa un commit. Un commit es un snapshot inmutable del estado del working directory en una fecha concreta.
+    """
+
+    author: str
+    email: str
+    message: str
+    type = "commit"
+    date: str
+    parents: list[str]
+    tree: str
+
+    def __post_init__(self):
+        assert self.author != "", """
+            El nombre del autor no puede estar vacío.
+        """
+        assert re.match(
+            r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", self.email
+        ), """
+            El email ingresado es inválido.
+        """
+        assert self.message != "", """
+            El mensaje no puede estar vacío.
+        """
+        for parent in self.parents:
+            assert re.match(r"^[a-f0-9]{64}$", parent), """
+                El commit anterior ingresado es inválido.
+            """
+
+        assert re.match(r"^[a-f0-9]{64}$", self.tree), """
+            El tree ingresado es inválido.
+        """
+
+    def add_parent(self, parent: str):
+        assert len(self.parents) <= 2, """
+            No se pueden asignar más commits padre al commit actual.
+            Sólo puede haber hasta dos commits padres por commit.
+        """
+        assert re.match(r"^[a-f0-9]{64}$", parent), """
+            El commit anterior ingresado es inválido.
+        """
+
+        self.parents.append(parent)
+
+
+@dataclass
+class TreeEntry:
+    """
+    Una clase que representa una entrada de un directorio.
+    """
+
+    mode: int
+    name: str
+    sha: str
+    obj_type: str
+
+    def __post_init__(self):
+        assert self.name != "", """
+            El nombre provisto no puede estar vacío.
+        """
+
+        assert re.match(r"^[a-f0-9]{64}$", self.sha), """
+            El hash ingresado es inválido.
+        """
+
+        assert self.obj_type in ("blob", "tree"), """
+            El tipo debe ser "blob" o "tree".
+        """
+
+
+@dataclass
+class Tree:
+    """
+    Una clase que representa a las entradas de un directorio.
+    """
+
+    name: str
+    type = "tree"
+    entries: list[TreeEntry]
+
+    def __post_init__(self):
+        assert self.name != "", """
+            El nombre provisto no puede ser vacío.
+        """
+
+
+@dataclass
+class Tag:
+    name: str
+    message: str
+    commit: str
+    type = "tag"
+
+    def __post_init__(self):
+        assert self.name != "", """
+            El nombre provisto no puede estar vacío.
+        """
+        assert match(r"^[a-f0-9]{64}$`", self.commit), f"""
+            El commit referenciado es incorrecto.
+
+            Valor provisto:
+            - {self.commit}
+        """
 
 
 class Repository(ABC):
