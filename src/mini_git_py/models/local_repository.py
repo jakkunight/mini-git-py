@@ -40,9 +40,6 @@ class LocalRepository(Repository):
         self.head_path = os.path.join(self.repo_path, "HEAD")
         self.index_path = os.path.join(self.repo_path, "index")
 
-    # --------------------------
-    # Init repo
-    # --------------------------
     def init(self, path: Optional[str] = None) -> Optional[str]:
         self.work_path = os.path.abspath(path or os.getcwd())
         self.repo_path = os.path.join(self.work_path, ".mg")
@@ -62,9 +59,6 @@ class LocalRepository(Repository):
         except Exception:
             return None
 
-    # --------------------------
-    # Formato estilo Git + gzip
-    # --------------------------
     def _encode(self, obj_type: str, body: bytes) -> bytes:
         header: str = f"{obj_type}{FIELD_SEP}{len(body)}"
         raw: bytes = header.encode() + SECTION_SEP.encode() + body
@@ -99,9 +93,6 @@ class LocalRepository(Repository):
     def load_object(self, sha: str) -> Optional[Tuple[str, bytes]]:
         return self._load_raw(sha)
 
-    # --------------------------
-    # BLOBS
-    # --------------------------
     def save_blob(self, blob: Blob) -> Optional[str]:
         try:
             header: bytes = f"{blob.mode}\n{blob.name}\n".encode()
@@ -118,9 +109,6 @@ class LocalRepository(Repository):
         mode, name, content = body.split(b"\n", 2)
         return Blob(name=name.decode(), mode=int(mode.decode()), content=content)
 
-    # --------------------------
-    # TREES
-    # --------------------------
     def save_tree(self, tree: Tree) -> Optional[str]:
         try:
             lines: List[str] = [f"name {tree.name}"]
@@ -144,9 +132,6 @@ class LocalRepository(Repository):
             entries.append(TreeEntry(int(mode), name, entry_sha, obj_type))
         return Tree(name=tree_name, entries=entries)
 
-    # --------------------------
-    # COMMITS
-    # --------------------------
     def save_commit(self, commit: Commit) -> Optional[str]:
         try:
             parts: List[str] = [f"tree {commit.tree}"]
@@ -195,18 +180,24 @@ class LocalRepository(Repository):
             tree=tree,
         )
 
-    # --------------------------
-    # TAGS
-    # --------------------------
     def save_tag(self, tag: Tag) -> Optional[str]:
         try:
             body: bytes = f"tag {tag.name}\nref {tag.commit}\n".encode()
-            return self._save_raw("tag", body)
+            tag_sha: str = self._save_raw("tag", body)
+            tag_ref: Ref = Ref(tag.name, tag_sha)
+            if self.save_ref(tag_ref) is None:
+                return None
+
+            return tag_sha
         except Exception:
             return None
 
-    def load_tag(self, sha: str) -> Optional[Tag]:
-        out = self._load_raw(sha)
+    def load_tag(self, name: str) -> Optional[Tag]:
+        ref: Ref | None = self.load_ref(name)
+        if ref is None:
+            return None
+
+        out = self._load_raw(ref.sha)
         if not out:
             return None
         _, body = out
@@ -219,9 +210,6 @@ class LocalRepository(Repository):
                 commit = line.split(" ", 1)[1]
         return Tag(name=name, commit=commit)
 
-    # --------------------------
-    # REFERENCIAS
-    # --------------------------
     def save_ref(self, ref: Ref) -> Optional[str]:
         try:
             filepath: str = os.path.join(self.refs_path, ref.name)
@@ -288,61 +276,15 @@ class LocalRepository(Repository):
         return old
 
     def update_index(self, working_tree: Tree) -> Optional[str]:
-        sha: Optional[str] = self.save_tree(working_tree)
-        if sha:
-            with open(self.index_path, "w") as f:
-                f.write(sha)
-        return sha
-
-
-# -------------------------------------------------------
-# WORKING COPY / CHECKOUT
-# -------------------------------------------------------
-class WorkingCopy:
-    repo: LocalRepository
-    work_path: str
-
-    def __init__(self, repo: LocalRepository) -> None:
-        self.repo = repo
-        self.work_path = repo.work_path
-
-    def checkout(self, commit_sha: str) -> Optional[str]:
-        commit: Optional[Commit] = self.repo.load_commit(commit_sha)
-        if commit is None:
+        try:
+            lines: List[str] = [f"name {working_tree.name}"]
+            for e in working_tree.entries:
+                lines.append(f"{e.mode} {e.name} {e.sha} {e.obj_type}")
+            body: bytes = "\n".join(lines).encode()
+            data: bytes = self._encode("tree", body)
+            sha: str = hashlib.sha256(data).hexdigest()
+            with open(self.index_path, "wb") as f:
+                f.write(data)
+            return sha
+        except Exception:
             return None
-        tree: Optional[Tree] = self.repo.load_tree(commit.tree)
-        if tree is None:
-            return None
-        self._clear_working_directory()
-        self._restore_tree(tree, self.work_path)
-        return commit_sha
-
-    def _clear_working_directory(self) -> None:
-        for item in os.listdir(self.work_path):
-            if item == ".mg":
-                continue
-            full: str = os.path.join(self.work_path, item)
-            if os.path.isdir(full):
-                shutil.rmtree(full)
-            else:
-                os.remove(full)
-
-    def _restore_tree(self, tree: Tree, path: str) -> None:
-        for entry in tree.entries:
-            full_path: str = os.path.join(path, entry.name)
-            if entry.obj_type == "tree":
-                os.makedirs(full_path, exist_ok=True)
-                sub_tree: Tree | None = self.repo.load_tree(entry.sha)
-                if sub_tree is None:
-                    raise ValueError("El tree está corrupto")
-                self._restore_tree(sub_tree, full_path)
-            elif entry.obj_type == "blob":
-                blob: Blob | None = self.repo.load_blob(entry.sha)
-                if blob is None:
-                    raise ValueError("El blob está corrupto.")
-                with open(full_path, "wb") as f:
-                    f.write(blob.content)
-                if entry.mode & 0o111:
-                    os.chmod(full_path, 0o755)
-                else:
-                    os.chmod(full_path, 0o644)
