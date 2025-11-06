@@ -4,6 +4,10 @@ import re
 
 @dataclass
 class TreeEntry:
+    """
+    Una clase que representa una entrada de un directorio.
+    """
+
     mode: int
     name: str
     sha: str
@@ -15,7 +19,7 @@ class TreeEntry:
         """
 
         assert re.match(r"^[a-f0-9]{64}$", self.sha), """
-            El tree ingresado es inválido.
+            El hash ingresado es inválido.
         """
 
         assert self.obj_type in ("blob", "tree"), """
@@ -25,6 +29,10 @@ class TreeEntry:
 
 @dataclass
 class Tree:
+    """
+    Una clase que representa a las entradas de un directorio.
+    """
+
     name: str
     type = "tree"
     entries: list[TreeEntry]
@@ -33,6 +41,3 @@ class Tree:
         assert self.name != "", """
             El nombre provisto no puede ser vacío.
         """
-
-    def add_entry(self, entry: TreeEntry):
-        self.entries.append(entry)
