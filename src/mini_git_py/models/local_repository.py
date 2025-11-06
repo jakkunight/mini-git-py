@@ -288,3 +288,193 @@ class LocalRepository(Repository):
             return sha
         except Exception:
             return None
+            
+   def _load_index_tree(self) -> Optional[Tree]:
+        """Carga el tree del staging area desde el archivo index"""
+        if not os.path.exists(self.index_path):
+            return None
+        try:
+            with open(self.index_path, "rb") as f:
+                data = self._decode(f.read())
+            if data[0] != "tree":
+                return None  
+            lines = data[1].decode().splitlines()
+            tree_name = lines[0].split(" ", 1)[1]
+            entries = [
+                TreeEntry(int(parts[0]), parts[1], parts[2], parts[3])
+                for line in lines[1:]
+                if (parts := line.split(" ", 3))
+            ]   
+            return Tree(name=tree_name, entries=entries)
+        except Exception:
+            return None
+
+    def add(self, filepath: str, mode: int = 100644) -> Optional[str]:
+        """
+        Añade un archivo al staging area.
+        Args:
+            filepath: Ruta relativa del archivo desde work_path
+            mode: Modo del archivo (100644 normal, 100755 ejecutable)
+        Returns:
+            SHA del blob creado, o None si falla
+        """
+        full_path = os.path.join(self.work_path, filepath)
+        if not os.path.exists(full_path):
+            return None
+        try:
+            with open(full_path, "rb") as f:
+                content = f.read()
+            # Crear y guardar blob
+            blob = Blob(name=os.path.basename(filepath), mode=mode, content=content)
+            blob_sha = self.save_blob(blob)
+            if not blob_sha:
+                return None
+            # Cargar index actual o crear nuevo
+            current_tree = self._load_index_tree()
+            if current_tree:
+                entries = list(current_tree.entries)
+                tree_name = current_tree.name
+            else:
+                entries = []
+                tree_name = "."
+            # Actualizar o agregar entrada
+            updated = False
+            for i, entry in enumerate(entries):
+                if entry.name == filepath:
+                    entries[i] = TreeEntry(mode, filepath, blob_sha, "blob")
+                    updated = True
+                    break
+            if not updated:
+                entries.append(TreeEntry(mode, filepath, blob_sha, "blob"))
+            # Guardar index actualizado
+            updated_tree = Tree(name=tree_name, entries=entries)
+            return blob_sha if self.update_index(updated_tree) else None
+        except Exception:
+            return None
+
+    def unstage(self, filepath: str) -> bool:
+        """
+        Remueve un archivo del staging area.
+        Args:
+            filepath: Ruta del archivo a remover
+        Returns:
+            True si se removió exitosamente
+        """
+        current_tree = self._load_index_tree()
+        if not current_tree:
+            return False
+        original_count = len(current_tree.entries)
+        entries = [e for e in current_tree.entries if e.name != filepath]
+        if len(entries) == original_count:
+            return False
+        updated_tree = Tree(name=current_tree.name, entries=entries)
+        return self.update_index(updated_tree) is not None
+
+    def reset_index(self) -> bool:
+        """Limpia completamente el staging area"""
+        return self.update_index(Tree(name=".", entries=[])) is not None
+
+    def status(self) -> List[str]:
+        """
+        Retorna lista de archivos en el staging area.
+        Returns:
+            Lista con los nombres de archivos preparados
+        """
+        tree = self._load_index_tree()
+        return [e.name for e in tree.entries] if tree else []
+
+    def _get_head_ref(self) -> str:
+        """Obtiene el nombre de la referencia desde HEAD"""
+        if not os.path.exists(self.head_path):
+            return "main"
+        with open(self.head_path, "r") as f:
+            content = f.read().strip()
+        # "ref: refs/main" -> "main"
+        return content.split("refs/")[1] if content.startswith("ref: refs/") else content
+
+    def _get_head_commit(self) -> Optional[str]:
+        """Obtiene el SHA del commit actual"""
+        ref_name = self._get_head_ref()
+        
+        # Si es SHA directo (detached HEAD)
+        if len(ref_name) == 64:
+            return ref_name
+        ref = self.load_ref(ref_name)
+        return ref.sha if ref else None
+
+    def commit(
+        self,
+        message: str,
+        author: str = "User",
+        email: str = "user@example.com"
+    ) -> Optional[str]:
+        """
+        Crea un commit con el contenido del staging area.
+        Args:
+            message: Mensaje descriptivo del commit
+            author: Nombre del autor
+            email: Email del autor
+        Returns:
+            SHA del commit creado, o None si no hay cambios
+        """
+        from datetime import datetime
+        # Verificar que hay cambios
+        staged_tree = self._load_index_tree()
+        if not staged_tree or not staged_tree.entries:
+            return None
+        # Guardar tree
+        tree_sha = self.save_tree(staged_tree)
+        if not tree_sha:
+            return None
+        # Crear commit con parent si existe
+        parent_sha = self._get_head_commit()
+        commit = Commit(
+            author=author,
+            email=email,
+            message=message,
+            date=datetime.now().isoformat(),
+            parents=[parent_sha] if parent_sha else [],
+            tree=tree_sha
+        )
+        commit_sha = self.save_commit(commit)
+        if not commit_sha:
+            return None
+        # Actualizar referencia
+        ref_name = self._get_head_ref()
+        if not self.save_ref(Ref(name=ref_name, sha=commit_sha)):
+            return None
+        # Actualizar HEAD
+        with open(self.head_path, "w") as f:
+            f.write(f"ref: refs/{ref_name}")
+        # Limpiar staging
+        self.reset_index()
+        return commit_sha
+
+    def log(self, max_count: int = None) -> List[Commit]:
+        """
+        Obtiene el historial de commits desde HEAD. 
+        Args:
+            max_count: Número máximo de commits (None = todos)
+        Returns:
+            Lista de commits en orden cronológico inverso
+        """
+        ref_name = self._get_head_ref()
+        # Obtener SHA inicial
+        if len(ref_name) == 64:
+            current_sha = ref_name
+        else:
+            ref = self.load_ref(ref_name)
+            if not ref:
+                return []
+            current_sha = ref.sha
+        commits = []
+        count = 0
+        
+        while current_sha and (max_count is None or count < max_count):
+            commit = self.load_commit(current_sha)
+            if not commit:
+                break
+            commits.append(commit)
+            current_sha = commit.parents[0] if commit.parents else None
+            count += 1
+        return commits
