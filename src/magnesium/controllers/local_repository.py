@@ -11,14 +11,13 @@
 import os
 import gzip
 import hashlib
-import shutil
 from typing import List, Optional, Tuple
-from mini_git_py.models.repository import Repository
-from mini_git_py.models.commit import Commit
-from mini_git_py.models.blob import Blob
-from mini_git_py.models.tree import Tree, TreeEntry
-from mini_git_py.models.tag import Tag
-from mini_git_py.models.references import Ref
+from magnesium.models.repository import Repository
+from magnesium.models.commit import Commit
+from magnesium.models.blob import Blob
+from magnesium.models.tree import Tree, TreeEntry
+from magnesium.models.tag import Tag
+from magnesium.models.references import Ref
 
 FIELD_SEP = chr(0x1C)
 SECTION_SEP = chr(0x1D)

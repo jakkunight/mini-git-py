@@ -5,6 +5,7 @@ from re import match
 @dataclass
 class Tag:
     name: str
+    message: str
     commit: str
     type = "tag"
 
