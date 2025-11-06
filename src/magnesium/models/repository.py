@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .models import Commit
+from .models import Commit, Tree, Blob, Tag, Ref
 
 
 class Repository(ABC):
