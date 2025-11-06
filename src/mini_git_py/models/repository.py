@@ -198,7 +198,6 @@ class Repository(ABC):
         Si la operación tuvo éxito, entonces devuelve el SHA-256 del `Commit` actualmente referenciado.
 
         Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
-
         """
         pass
 
@@ -208,6 +207,15 @@ class Repository(ABC):
         Toma como entrada el working tree (`Tree`) y lo almacena en el index para luego referenciarlo y hacer un `Commit`. Esto es el "staging area" del repositorio.
 
         Si la operación tuvo éxito, entonces retorna el SHA-256 del working tree actual.
+
+        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        """
+        pass
+
+    @abstractmethod
+    def load_index(self) -> Tree | None:
+        """
+        Devuelve el `Tree` almacenado en el index que representa el working directory.
 
         Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
         """
