@@ -5,13 +5,12 @@ import re
 @dataclass
 class TreeEntry:
     """
-    Una clase que representa una entrada de un directorio.
+    Una clase que representa una entrada de tipo 'blob' de un directorio.
     """
 
     mode: int
     name: str
     sha: str
-    obj_type: str
 
     def __post_init__(self):
         assert self.name != "", """
@@ -22,8 +21,24 @@ class TreeEntry:
             El hash ingresado es inválido.
         """
 
-        assert self.obj_type in ("blob", "tree"), """
-            El tipo debe ser "blob" o "tree".
+
+@dataclass
+class BlobEntry:
+    """
+    Una clase que representa una entrada de tipo 'blob' de un directorio.
+    """
+
+    mode: int
+    name: str
+    sha: str
+
+    def __post_init__(self):
+        assert self.name != "", """
+            El nombre provisto no puede estar vacío.
+        """
+
+        assert re.match(r"^[a-f0-9]{64}$", self.sha), """
+            El hash ingresado es inválido.
         """
 
 
@@ -34,8 +49,9 @@ class Tree:
     """
 
     name: str
-    type = "tree"
-    entries: list[TreeEntry]
+    tree_entries: list[TreeEntry]
+    blob_entries: list[BlobEntry]
+    type: str = "tree"
 
     def __post_init__(self):
         assert self.name != "", """
