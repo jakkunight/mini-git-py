@@ -4,8 +4,13 @@ import re
 
 @dataclass
 class Ref:
+    """
+    Una clase que representa una referencia mutable a un `Commit` o un `Tag`.
+    """
+
     name: str
     sha: str
+    type: str = "commit"
 
     def __post_init__(self):
         assert self.name != "", """
@@ -16,4 +21,15 @@ class Ref:
 
             Valor provisto:
             - {self.sha}
+        """
+
+        assert self.type in ("commit", "tag"), f"""
+            El tipo de referencia provisto es inválido.
+
+            Valores permitidos:
+            - "commit"
+            - "tag"
+
+            Valor provisto:
+            - {self.type}
         """

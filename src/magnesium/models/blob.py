@@ -10,7 +10,7 @@ class Blob:
     name: str
     mode: int
     content: bytes
-    type = "blob"
+    type: str = "blob"
 
     def __post_init__(self):
         assert self.type == "type", """

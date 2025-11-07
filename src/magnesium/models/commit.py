@@ -11,7 +11,7 @@ class Commit:
     author: str
     email: str
     message: str
-    type = "commit"
+    type: str = "commit"
     date: str
     parents: list[str]
     tree: str
@@ -35,6 +35,9 @@ class Commit:
 
         assert re.match(r"^[a-f0-9]{64}$", self.tree), """
             El tree ingresado es inválido.
+        """
+        assert self.type == "commit", """
+            El tipo de dato debe ser siempre "commit" y no debe ser modificado!
         """
 
     def add_parent(self, parent: str):
