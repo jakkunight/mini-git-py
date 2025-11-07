@@ -11,10 +11,10 @@ class Commit:
     author: str
     email: str
     message: str
-    type: str = "commit"
     date: str
     parents: list[str]
     tree: str
+    type: str = "commit"
 
     def __post_init__(self):
         assert self.author != "", """
