@@ -1,43 +1,56 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 import re
+from typing import Iterable
 
 
 @dataclass
 class TreeEntry:
-    """
-    Una clase que representa una entrada de un directorio.
-    """
+    
 
     mode: int
     name: str
     sha: str
     obj_type: str
 
-    def __post_init__(self):
-        assert self.name != "", """
-            El nombre provisto no puede estar vacío.
-        """
+    def __post_init__(self) -> None:
+     assert isinstance(self.mode, int) 
 
-        assert re.match(r"^[a-f0-9]{64}$", self.sha), """
-            El hash ingresado es inválido.
-        """
+     assert self.name != ""
 
-        assert self.obj_type in ("blob", "tree"), """
-            El tipo debe ser "blob" o "tree".
-        """
+     assert re.fullmatch(r"[a-f0-9]{64}", self.sha) 
+
+     assert self.obj_type in ("blob", "tree")
 
 
 @dataclass
 class Tree:
-    """
-    Una clase que representa a las entradas de un directorio.
-    """
+    
 
     name: str
-    type = "tree"
-    entries: list[TreeEntry]
+    entries: list[TreeEntry] | Iterable[TreeEntry] = field(default_factory=list)
 
-    def __post_init__(self):
-        assert self.name != "", """
-            El nombre provisto no puede ser vacío.
-        """
+    
+    type = "tree"
+    
+
+    def __post_init__(self) -> None:
+        assert self.name != ""
+
+    
+        if not isinstance(self.entries, list):
+            self.entries = list(self.entries)
+
+        for entry in self.entries:
+            assert isinstance(entry, TreeEntry)
+
+        self.entries.sort(key=lambda entry: entry.name)
+
+    def add_entry(self, entry: TreeEntry) -> None:
+        assert isinstance(entry, TreeEntry)
+        self.entries.append(entry)
+        self.entries.sort(key=lambda item: item.name)
+
+
+__all__ = ["Tree", "TreeEntry"]
