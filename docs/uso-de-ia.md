@@ -19,7 +19,7 @@ La técnica utilizada consta del siguiente proceso:
 2. Debido a que las excepciones no son del todo obligatorias de manejarse en
    Python, se usa la convención 'nil-as-error' para forzar al que llama a la
    función a manejar el 'error', representado como `None` en este caso.
-3. Una vez definido el modelo, se pide a algún modelo de IA (ChatGPT, Gemmini,
+3. Una vez definido el modelo, se pide a algún modelo de IA (ChatGPT, Gemini,
    Claude, DeepSeek, etc) que realice una implementación de las interfaces,
    respetando los tipos de datos definidos. De esta forma, se puede generar
    código rápido y muy sólido, pues el propio tipado de datos imposibilita la
