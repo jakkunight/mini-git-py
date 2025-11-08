@@ -1,34 +1,31 @@
 from gzip import compress, decompress
 from hashlib import sha256
-from os.path import join, splitroot
-from pickletools import uint8
-from turtle import heading
+from os import getcwd, makedirs
+from os.path import join
 from typing import override
 from magnesium.models.references import Ref
 from magnesium.models.repository import Repository
 from magnesium.models.blob import Blob
 from magnesium.models.commit import Commit
+from magnesium.models.tag import Tag
 from magnesium.models.tree import Tree
 
 
 class LocalRepository(Repository):
     _basepath: str
     _object_store: str
+    _refs_store: str
+    _index: str
+    _head: str
     _DEFAULT_DATA_ENCODING: str = "utf-8"
     _ASCII_FILE_SEPARATOR: str = "\x1c"
     _ASCII_GROUP_SEPARATOR: str = "\x1d"
     _ASCII_RECORD_SEPARATOR: str = "\x1e"
     _ASCII_UNIT_SEPARATOR: str = "\x1f"
+    _FIRST_COMMIT_PARENT_HASH: str = "0" * 40
 
     def __init__(self, path: str) -> None:
         super().__init__()
-        self._basepath = path
-        self._object_store = join(self._basepath, "objects")
-        assert self._DEFAULT_DATA_ENCODING == "utf-8", """
-        Se intentó modificar la codificación por defecto de los archivos!
-
-        La codificación debe ser siempre UTF-8.
-        """
 
     def _hash_object(self, data: str) -> str:
         encoded_data = data.encode(self._DEFAULT_DATA_ENCODING)
@@ -59,7 +56,28 @@ class LocalRepository(Repository):
 
     @override
     def init(self, path: str | None) -> str | None:
-        return
+        if path is None:
+            path = getcwd()
+        self._basepath = join(path, ".mg")
+        self._object_store = join(self._basepath, "objects")
+        self._refs_store = join(self._basepath, "refs")
+        self._index = join(self._basepath, "index")
+        self._head = join(self._basepath, "head")
+        assert self._DEFAULT_DATA_ENCODING == "utf-8", """
+        Se intentó modificar la codificación por defecto de los archivos!
+
+        La codificación debe ser siempre UTF-8.
+        """
+        makedirs(self._basepath)
+        makedirs(self._object_store)
+        makedirs(self._refs_store)
+        index = open(self._index, "xb")
+        _ = index.write(b"")
+        index.close()
+        head = open(self._head, "xb")
+        _ = head.write(b"")
+        head.close()
+        return path
 
     @override
     def save_blob(self, blob: Blob) -> str | None:
@@ -87,4 +105,48 @@ class LocalRepository(Repository):
 
     @override
     def save_ref(self, ref: Ref) -> str | None:
+        return
+
+    @override
+    def load_ref(self, name: str) -> Ref | None:
+        return
+
+    @override
+    def list_refs(self) -> list[Ref] | None:
+        return
+
+    @override
+    def update_ref(self, ref: Ref) -> str | None:
+        return
+
+    @override
+    def delete_ref(self, name: str) -> str | None:
+        return
+
+    @override
+    def save_tag(self, tag: Tag) -> str | None:
+        return
+
+    @override
+    def load_tag(self, name: str) -> Tag | None:
+        return
+
+    @override
+    def log_ref(self, name: str) -> list[Commit] | None:
+        return
+
+    @override
+    def log_refs(self) -> list[Commit] | None:
+        return
+
+    @override
+    def update_head_ref(self, ref: Ref) -> str | None:
+        return
+
+    @override
+    def update_index(self, working_tree: Tree) -> str | None:
+        return
+
+    @override
+    def load_index(self) -> Tree | None:
         return
