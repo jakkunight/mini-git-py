@@ -48,12 +48,11 @@ class Tree:
     Una clase que representa a las entradas de un directorio.
     """
 
-    name: str
     tree_entries: list[TreeEntry]
     blob_entries: list[BlobEntry]
     type: str = "tree"
 
     def __post_init__(self):
-        assert self.name != "", """
-            El nombre provisto no puede ser vacío.
+        assert self.blob_entries != [] or self.tree_entries != [], """
+            El árbol provisto no puede estar vacío. Debe contener al menos una entrada.
         """

@@ -1,4 +1,3 @@
-from typing import Optional, List
 from abc import ABC, abstractmethod
 
 from .repository import Repository
@@ -13,7 +12,7 @@ class VersionControlSystem(ABC):
     """
 
     @abstractmethod
-    def init(self, repository: Repository) -> Optional[str]:
+    def init(self, repository: Repository) -> str | None:
         """
         Inicializa la carpeta del proyecto y toma un repositorio como entrada para almacenar los cambios de versiones de esa carpeta. Es responsabilidad de la aplicación inicializar correctamente el repositorio, y proteger su contenido en caso de que el mismo se encuentre en la carpeta de trabajo.
 
@@ -22,7 +21,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def stage_file(self, repository: Repository, path: str) -> Optional[str]:
+    def stage_file(self, repository: Repository, path: str) -> str | None:
         """
         Añade un archivo al staging area del repositorio dado. Actualiza el tree
 
@@ -31,7 +30,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def stage_directory(self, repository: Repository, path: str) -> Optional[str]:
+    def stage_directory(self, repository: Repository, path: str) -> str | None:
         """
         Añade un archivo al staging area del repositorio dado. Actualiza el index del repositorio con las entradas de un directorio. Devuelve SHA-256 del `Tree` creado.
 
@@ -42,7 +41,7 @@ class VersionControlSystem(ABC):
     @abstractmethod
     def commit(
         self, repository: Repository, author: str, email: str, message: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Crea un `Commit` a partir del `Tree` almacenado en el índice.
 
@@ -53,7 +52,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def checkout_commit(self, repository: Repository, commit: str) -> Optional[str]:
+    def checkout_commit(self, repository: Repository, commit: str) -> str | None:
         """
         Toma como entrada un repositorio y el SHA-256 de un `Commit` para restaurar el working directory al estado indicado en el `Commit`.
 
@@ -64,7 +63,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def checkout_ref(self, repository: Repository, name: str) -> Optional[str]:
+    def checkout_ref(self, repository: Repository, name: str) -> str | None:
         """
         Toma como entrada un `Repository` y el nombre de un `Ref` para restaurar el working directory al estado indicado en el `Commit` referenciado por la `Ref`.
 
@@ -75,7 +74,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def checkout_tag(self, repository: Repository, name: str) -> Optional[str]:
+    def checkout_tag(self, repository: Repository, name: str) -> str | None:
         """
         Toma como entrada un `Repository` y el nombre de un `Tag` para restaurar el working directory al estado indicado en el `Commit` referenciado por el `Tag`.
 
@@ -86,7 +85,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def log(self, repository: Repository, ref: Optional[Ref]) -> List[Commit]:
+    def log(self, repository: Repository, ref: Ref | None) -> Commit | None:
         """
         Toma como entrada un `Repository` y una `Ref`. Devuelve una lista con los `Commit` correspondientes a esa referencia. Si no se especifica una referencia, se devuelven los `Commit` correspondientes a la `Ref` activa.
 
@@ -96,8 +95,8 @@ class VersionControlSystem(ABC):
 
     @abstractmethod
     def create_branch(
-        self, repository: Repository, name: str, commit: Optional[str]
-    ) -> Optional[Ref]:
+        self, repository: Repository, name: str, commit: str | None
+    ) -> Ref | None:
         """
         Toma como entrada un `Repository`, el nombre de la nueva rama, y el SHA-256 del `Commit` al que hace referencia.
 
@@ -108,7 +107,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def delete_branch(self, repository: Repository, name: str) -> Optional[str]:
+    def delete_branch(self, repository: Repository, name: str) -> str | None:
         """
         Toma como argumentos un `Repository` y el nombre de una `Ref` para eliminarla del repositorio.
 
@@ -119,7 +118,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def list_branches(self, repository: Repository) -> Optional[List[Ref]]:
+    def list_branches(self, repository: Repository) -> list[Ref] | None:
         """
         Toma como entrada un `Repository`. devuelve una lista con todas las`Ref` a `Commit` del repositorio.
 
@@ -129,8 +128,8 @@ class VersionControlSystem(ABC):
 
     @abstractmethod
     def create_tag(
-        self, repository: Repository, name: str, commit: Optional[str]
-    ) -> Optional[Tag]:
+        self, repository: Repository, name: str, commit: str | None
+    ) -> Tag | None:
         """
         Toma como entrada un `Repository`, el nombre de la nueva rama, y el SHA-256 del `Commit` al que hace referencia.
 
@@ -141,7 +140,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def delete_tag(self, repository: Repository, name: str) -> Optional[str]:
+    def delete_tag(self, repository: Repository, name: str) -> str | None:
         """
         Toma como argumentos un `Repository` y el nombre de una `Tag` para eliminarla del repositorio.
 
@@ -152,7 +151,7 @@ class VersionControlSystem(ABC):
         pass
 
     @abstractmethod
-    def list_tags(self, repository: Repository) -> Optional[List[Tag]]:
+    def list_tags(self, repository: Repository) -> list[Tag] | None:
         """
         Toma como entrada un `Repository`. devuelve una lista con todas los `Tag` a `Commit` del repositorio.
 
@@ -164,8 +163,8 @@ class VersionControlSystem(ABC):
     # Definir un tipo de datos que modele las diferencias entre dos conjuntos de líneas.
     @abstractmethod
     def diff_commits(
-        self, repository: Repository, base: Optional[str], target: str
-    ) -> Optional[List[str]]:
+        self, repository: Repository, base: str | None, target: str
+    ) -> list[str] | None:
         """
         Toma como entrada un `Repository`, el SHA-256 de un `Commit` base y el SHA-256 de un `Commit` objetivo a comparar contra la base.
 
