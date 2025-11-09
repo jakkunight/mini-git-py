@@ -85,16 +85,21 @@ class LocalRepository(Repository):
             )
             compressed_content: bytes = file.read()
             encoded_content: bytes = decompress(compressed_content)
-            assert sha == sha256(encoded_content), """
+            assert sha == sha256(encoded_content).hexdigest(), f"""
             El archivo se corrompió!
+            - HASH provisto: {sha}
+            - HASH calculado: {sha256(encoded_content).hexdigest()}
             """
             content: str = encoded_content.decode(self._DEFAULT_DATA_ENCODING)
             (header, body) = content.split(self._ASCII_UNIT_SEPARATOR)
             (type, size_str) = header.split(self._ASCII_RECORD_SEPARATOR)
-            assert int(size_str) == len(body), """
+            assert int(size_str) == len(body.encode(self._DEFAULT_DATA_ENCODING)), f"""
             El archivo se corrompió!
+            - Longitud declarada: {int(size_str)}
+            - Longitud calculada: {len(body.encode(self._DEFAULT_DATA_ENCODING))}
             """
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
         return (type, body)
 
@@ -158,7 +163,7 @@ class LocalRepository(Repository):
         body += f"{commit.tree}"
         for parent in commit.parents:
             # Si no nay un commit padre, entonces se omite.
-            if parent != "":
+            if parent == "":
                 continue
             # Si el commit padre no existe, se retorna con error.
             if not exists(
@@ -207,27 +212,40 @@ class LocalRepository(Repository):
     @override
     def save_ref(self, ref: Ref) -> str | None:
         try:
+            assert exists(
+                join(
+                    self._object_store,
+                    ref.sha[: self._DEFAULT_HASH_PATH_STRIP],
+                    ref.sha[self._DEFAULT_HASH_PATH_STRIP :],
+                )
+            ), "SHA-256 inválido.\nEl commit referenciado no existe!"
+            if not exists(join(self._refs_store, ref.name)):
+                makedirs(join(self._refs_store, ref.name))
+
             with open(
-                join(self._refs_store, ref.name),
-                "wt",
-                encoding=self._DEFAULT_DATA_ENCODING,
+                join(self._refs_store, ref.name, ref.name),
+                "wb",
             ) as f:
-                _ = f.write(f"{ref.type}{self._ASCII_RECORD_SEPARATOR}{ref.sha}")
-        except Exception:
+                content = f"{ref.type}{self._ASCII_RECORD_SEPARATOR}{ref.sha}"
+                _ = f.write(content.encode(self._DEFAULT_DATA_ENCODING))
+                f.close()
+        except Exception as e:
+            print(e)
             return None
         return ref.sha
 
     @override
     def load_ref(self, name: str) -> Ref | None:
-        path = join(self._refs_store, name)
-        if not exists(path):
-            return None
         try:
-            with open(path, "r", encoding=self._DEFAULT_DATA_ENCODING) as f:
+            path = join(self._refs_store, name, name)
+            assert exists(path), "La referencia no existe!"
+            with open(path, "rt", encoding=self._DEFAULT_DATA_ENCODING) as f:
                 content = f.read()
             t, sha = content.split(self._ASCII_RECORD_SEPARATOR)
+            f.close()
             return Ref(name, sha, t)
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
 
     @override
@@ -247,7 +265,9 @@ class LocalRepository(Repository):
         old = self.load_ref(ref.name)
         old_sha = old.sha if old else None
         result = self.save_ref(ref)
-        return old_sha if result else None
+        if result is None:
+            return None
+        return old_sha
 
     @override
     def delete_ref(self, name: str) -> str | None:
@@ -255,7 +275,7 @@ class LocalRepository(Repository):
         if old is None:
             return None
         try:
-            remove(join(self._refs_store, name))
+            remove(join(self._refs_store, name, name))
         except Exception:
             return None
         return old.sha
@@ -303,58 +323,125 @@ class LocalRepository(Repository):
         return Commit(author, email, message, date, parents, tree)
 
     @override
-    def log_ref(self, name: str) -> list[Commit] | None:
-        ref = self.load_ref(name)
-        if ref is None:
+    def load_ref_log(self, name: str) -> list[Commit] | None:
+        log_path = join(self._refs_store, name, "logs")
+        try:
+            log_file = open(log_path, "rb")
+            raw_logs = log_file.read().decode(self._DEFAULT_DATA_ENCODING)
+            commits: list[Commit] = []
+            logs = raw_logs.split(self._ASCII_RECORD_SEPARATOR)
+            for log in logs:
+                target_commit = self.load_commit(log)
+                assert target_commit is not None, (
+                    "Los logs de esta rama están corruptos!"
+                )
+                commits.append(target_commit)
+
+            commits.reverse()
+            return commits
+
+        except Exception:
             return None
-        commits: list[Commit] = []
-        current = ref.sha
-        while current != self._FIRST_COMMIT_PARENT_HASH:
-            c = self.load_commit(current)
-            if c is None:
-                break
-            commits.append(c)
-            if len(c.parents) == 0:
-                break
-            current = c.parents[0]
-        return commits
 
     @override
-    def log_refs(self) -> list[Commit] | None:
-        seen: set[str] = set()
-        out: list[Commit] = []
-        refs = self.list_refs()
-        if refs is None:
-            return None
-        for r in refs:
-            result = self.log_ref(r.name)
-            if result is None:
-                return None
-            commits: list[Commit] = result
-            for c in commits:
-                if c.tree not in seen:
-                    seen.add(c.tree)
-                    out.append(c)
+    def update_ref_log(self, ref: str, commit: str) -> str | None:
+        try:
+            assert match(r"^[0-9a-f]{64}$", commit), "El SHA-256 es inválido!"
+            commit_path = join(
+                self._object_store,
+                commit[: self._DEFAULT_HASH_PATH_STRIP],
+                commit[self._DEFAULT_HASH_PATH_STRIP :],
+            )
+            assert exists(commit_path), "El commit referenciado no existe!"
+            ref_path = join(self._refs_store, ref, ref)
+            assert exists(ref_path), "La rama no existe!"
 
-        return out
+            ref_log_path = join(self._refs_store, ref, "logs")
+            file = open(ref_log_path, "ab")
+            assert file.write(commit.encode(self._DEFAULT_DATA_ENCODING)) == len(
+                commit.encode(self._DEFAULT_DATA_ENCODING)
+            ), "El archivo no se escribió correctamente"
+
+            return commit
+
+        except Exception:
+            return None
 
     @override
     def update_head_ref(self, ref: Ref) -> str | None:
-        return self.save_ref(ref)
+        try:
+            assert ref.type == "commit", "La referencia provista no apunta a un commit."
+            head_file = open(self._head, "wb")
+            if head_file.write(ref.name.encode(self._DEFAULT_DATA_ENCODING)) != len(
+                ref.name.encode(self._DEFAULT_DATA_ENCODING)
+            ):
+                return None
+            return ref.sha
+        except Exception:
+            return None
 
     @override
     def update_index(self, working_tree: Tree) -> str | None:
-        sha = self.save_tree(working_tree)
-        if sha is None:
+        """
+        Guarda el árbol que representa el working directory en el index.
+
+        Devuelve el SHA-256 del objeto guardado.
+
+        Si la operación falla, se devuelve un `None` como resultado (nil-as-error)
+        """
+
+        lines: list[str] = []
+        for entry in working_tree.tree_entries:
+            lines.append(
+                f"tree{self._ASCII_RECORD_SEPARATOR}{entry.mode}{self._ASCII_RECORD_SEPARATOR}{entry.name}{self._ASCII_RECORD_SEPARATOR}{entry.sha}"
+            )
+        for entry in working_tree.blob_entries:
+            lines.append(
+                f"blob{self._ASCII_RECORD_SEPARATOR}{entry.mode}{self._ASCII_RECORD_SEPARATOR}{entry.name}{self._ASCII_RECORD_SEPARATOR}{entry.sha}"
+            )
+        body = self._ASCII_UNIT_SEPARATOR.join(lines)
+        header: str = f"{working_tree.type}{self._ASCII_RECORD_SEPARATOR}{len(body.encode(self._DEFAULT_DATA_ENCODING))}"
+        content: str = f"{header}{self._ASCII_UNIT_SEPARATOR}{body}"
+        encoded_content: bytes = content.encode(self._DEFAULT_DATA_ENCODING)
+        sha: str = sha256(encoded_content).hexdigest()
+        compressed_content: bytes = compress(encoded_content)
+        try:
+            file = open(
+                self._index,
+                "wb",
+            )
+            _ = file.write(compressed_content)
+            file.close()
+        except Exception as e:
+            print(e)
             return None
-        with open(self._index, "w", encoding=self._DEFAULT_DATA_ENCODING) as f:
-            _ = f.write(sha)
+
         return sha
 
     @override
     def load_index(self) -> Tree | None:
-        if not exists(self._index):
+        try:
+            file = open(
+                self._index,
+                "rb",
+            )
+            compressed_content: bytes = file.read()
+            encoded_content: bytes = decompress(compressed_content)
+            content: str = encoded_content.decode(self._DEFAULT_DATA_ENCODING)
+            (header, body) = content.split(self._ASCII_UNIT_SEPARATOR)
+            (_, size_str) = header.split(self._ASCII_RECORD_SEPARATOR)
+            assert int(size_str) == len(body), """
+            El archivo se corrompió!
+            """
+        except Exception:
             return None
-        with open(self._index, "r", encoding=self._DEFAULT_DATA_ENCODING) as f:
-            sha = f.read().strip()
-        return self.load_tree(sha)
+
+        tree_entries: list[TreeEntry] = []
+        blob_entries: list[BlobEntry] = []
+        for line in body.split(self._ASCII_UNIT_SEPARATOR):
+            t, mode, name, s = line.split(self._ASCII_RECORD_SEPARATOR)
+            mode = int(mode)
+            if t == "tree":
+                tree_entries.append(TreeEntry(mode, name, s))
+            else:
+                blob_entries.append(BlobEntry(mode, name, s))

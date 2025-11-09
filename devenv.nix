@@ -12,6 +12,7 @@
   packages = with pkgs; [
     git
     pandoc
+    python313Packages.pytest
   ];
 
   # https://devenv.sh/languages/
