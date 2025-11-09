@@ -85,16 +85,21 @@ class LocalRepository(Repository):
             )
             compressed_content: bytes = file.read()
             encoded_content: bytes = decompress(compressed_content)
-            assert sha == sha256(encoded_content), """
+            assert sha == sha256(encoded_content).hexdigest(), f"""
             El archivo se corrompió!
+            - HASH provisto: {sha}
+            - HASH calculado: {sha256(encoded_content).hexdigest()}
             """
             content: str = encoded_content.decode(self._DEFAULT_DATA_ENCODING)
             (header, body) = content.split(self._ASCII_UNIT_SEPARATOR)
             (type, size_str) = header.split(self._ASCII_RECORD_SEPARATOR)
-            assert int(size_str) == len(body), """
+            assert int(size_str) == len(body.encode(self._DEFAULT_DATA_ENCODING)), f"""
             El archivo se corrompió!
+            - Longitud declarada: {int(size_str)}
+            - Longitud calculada: {len(body.encode(self._DEFAULT_DATA_ENCODING))}
             """
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
         return (type, body)
 
@@ -158,7 +163,7 @@ class LocalRepository(Repository):
         body += f"{commit.tree}"
         for parent in commit.parents:
             # Si no nay un commit padre, entonces se omite.
-            if parent != "":
+            if parent == "":
                 continue
             # Si el commit padre no existe, se retorna con error.
             if not exists(
@@ -207,27 +212,40 @@ class LocalRepository(Repository):
     @override
     def save_ref(self, ref: Ref) -> str | None:
         try:
+            assert exists(
+                join(
+                    self._object_store,
+                    ref.sha[: self._DEFAULT_HASH_PATH_STRIP],
+                    ref.sha[self._DEFAULT_HASH_PATH_STRIP :],
+                )
+            ), "SHA-256 inválido.\nEl commit referenciado no existe!"
+            if not exists(join(self._refs_store, ref.name)):
+                makedirs(join(self._refs_store, ref.name))
+
             with open(
                 join(self._refs_store, ref.name, ref.name),
-                "wt",
-                encoding=self._DEFAULT_DATA_ENCODING,
+                "wb",
             ) as f:
-                _ = f.write(f"{ref.type}{self._ASCII_RECORD_SEPARATOR}{ref.sha}")
-        except Exception:
+                content = f"{ref.type}{self._ASCII_RECORD_SEPARATOR}{ref.sha}"
+                _ = f.write(content.encode(self._DEFAULT_DATA_ENCODING))
+                f.close()
+        except Exception as e:
+            print(e)
             return None
         return ref.sha
 
     @override
     def load_ref(self, name: str) -> Ref | None:
-        path = join(self._refs_store, name, name)
-        if not exists(path):
-            return None
         try:
-            with open(path, "r", encoding=self._DEFAULT_DATA_ENCODING) as f:
+            path = join(self._refs_store, name, name)
+            assert exists(path), "La referencia no existe!"
+            with open(path, "rt", encoding=self._DEFAULT_DATA_ENCODING) as f:
                 content = f.read()
             t, sha = content.split(self._ASCII_RECORD_SEPARATOR)
+            f.close()
             return Ref(name, sha, t)
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
 
     @override
@@ -319,7 +337,8 @@ class LocalRepository(Repository):
                 )
                 commits.append(target_commit)
 
-            return commits.reverse()
+            commits.reverse()
+            return commits
 
         except Exception:
             return None
@@ -337,7 +356,7 @@ class LocalRepository(Repository):
             ref_path = join(self._refs_store, ref, ref)
             assert exists(ref_path), "La rama no existe!"
 
-            ref_log_path = join(self._refs_store, ref)
+            ref_log_path = join(self._refs_store, ref, "logs")
             file = open(ref_log_path, "ab")
             assert file.write(commit.encode(self._DEFAULT_DATA_ENCODING)) == len(
                 commit.encode(self._DEFAULT_DATA_ENCODING)
@@ -381,7 +400,7 @@ class LocalRepository(Repository):
                 f"blob{self._ASCII_RECORD_SEPARATOR}{entry.mode}{self._ASCII_RECORD_SEPARATOR}{entry.name}{self._ASCII_RECORD_SEPARATOR}{entry.sha}"
             )
         body = self._ASCII_UNIT_SEPARATOR.join(lines)
-        header: str = f"{type}{self._ASCII_RECORD_SEPARATOR}{len(body.encode(self._DEFAULT_DATA_ENCODING))}"
+        header: str = f"{working_tree.type}{self._ASCII_RECORD_SEPARATOR}{len(body.encode(self._DEFAULT_DATA_ENCODING))}"
         content: str = f"{header}{self._ASCII_UNIT_SEPARATOR}{body}"
         encoded_content: bytes = content.encode(self._DEFAULT_DATA_ENCODING)
         sha: str = sha256(encoded_content).hexdigest()
