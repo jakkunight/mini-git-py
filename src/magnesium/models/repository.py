@@ -170,9 +170,9 @@ class Repository(ABC):
         pass
 
     @abstractmethod
-    def log_ref(self, name: str) -> list[Commit] | None:
+    def load_ref_log(self, name: str) -> list[Commit] | None:
         """
-        Reconstruye el historial de cambios de una `Ref`.
+        Devuelve el historial de cambios de una `Ref`.
 
         Si la operación tuvo éxito, entonces retorna una `list[Commit]`.
 
@@ -181,14 +181,15 @@ class Repository(ABC):
         pass
 
     @abstractmethod
-    def log_refs(self) -> list[Commit] | None:
+    def update_ref_log(self, ref: str, commit: str) -> str | None:
         """
-        Reconstruye el historial de cambios de todas las `Ref` del repositorio. Garantiza que los `Commit` sean únicos, pero no reconstruye las ramificaciones. Es responsabilidad de quien invoque a este método realizar tal formato
+        Actualiza el log de una `Ref`.
 
-        Si la operación tuvo éxito, entonces retorna una `list[Commit]`.
+        Toma como argumentos el nombre de la `Ref` y el SHA-256 de un `Commit`
 
-        Si la operación falla, se devuelve `None` (nil-as-error), o se plantea una excepción `AssertionError` con un mensaje explicando el error.
+        Devuelve `None` si ocurrió un error (nil-as-error)
         """
+        pass
 
     @abstractmethod
     def update_head_ref(self, ref: Ref) -> str | None:
