@@ -6,6 +6,7 @@ from .hash import Sha256Hash
 from .ref import CommitRef, TagRef
 from .tag import Tag
 from .tree import DirEntry, FileEntry, Tree
+from .diffs import Diff, AddedLine, DeletedLine, UnchangedLine
 
 __all__ = [
     "Sha256Hash",
@@ -19,4 +20,8 @@ __all__ = [
     "CommitRef",
     "TagRef",
     "Reflog",
+    "Diff",
+    "AddedLine",
+    "DeletedLine",
+    "UnchangedLine",
 ]
