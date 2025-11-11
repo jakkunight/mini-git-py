@@ -6,6 +6,19 @@ from .hash import Sha256Hash
 from .ref import CommitRef, TagRef
 from .tag import Tag
 from .tree import DirEntry, FileEntry, Tree
+from .diffs import (
+    AddedLine,
+    DeletedLine,
+    UnchangedLine,
+    AddedDirEntry,
+    AddedFileEntry,
+    UnchangedFileEntry,
+    UnchangedDirEntry,
+    DeletedFileEntry,
+    DeletedDirEntry,
+    BlobDiff,
+    TreeDiff,
+)
 
 __all__ = [
     "Sha256Hash",
@@ -19,4 +32,15 @@ __all__ = [
     "CommitRef",
     "TagRef",
     "Reflog",
+    "AddedLine",
+    "DeletedLine",
+    "UnchangedLine",
+    "AddedDirEntry",
+    "AddedFileEntry",
+    "UnchangedFileEntry",
+    "UnchangedDirEntry",
+    "DeletedFileEntry",
+    "DeletedDirEntry",
+    "BlobDiff",
+    "TreeDiff",
 ]
