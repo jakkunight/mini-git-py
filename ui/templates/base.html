@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mini Git PyUI{% endblock %}</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- D3.js para visualizaciones avanzadas -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Header Navigation -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1 class="app-title">
+                    <i class="bi bi-git"></i>
+                    Mini Git PyUI
+                </h1>
+            </div>
+            
+            <div class="header-center">
+                <nav class="header-nav">
+                    <a href="{{ url_for('home') }}" class="nav-link {% if request.endpoint == 'home' %}active{% endif %}">
+                        <i class="bi bi-house"></i>
+                        Inicio
+                    </a>
+                </nav>
+            </div>
+            
+            <div class="header-right">
+                <button class="btn btn-primary" id="cloneRepoBtn">
+                    <i class="bi bi-download"></i>
+                    Clonar repositorio
+                </button>
+                <button class="btn btn-secondary" id="createRepoBtn">
+                    <i class="bi bi-plus-circle"></i>
+                    Nuevo repositorio
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>Repositorios</h3>
+                <button class="btn-icon" id="refreshRepos" title="Actualizar">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            
+            <div class="sidebar-content">
+                <div id="repositories-list" class="repositories-list">
+                    <!-- Los repositorios se cargarán aquí -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <section class="content-area">
+            {% block content %}{% endblock %}
+        </section>
+    </main>
+
+    <!-- Modals -->
+    
+    <!-- Clone Repository Modal -->
+    <div id="cloneModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Clonar Repositorio</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="cloneForm">
+                    <div class="form-group">
+                        <label for="repoUrl">URL del repositorio:</label>
+                        <input type="url" id="repoUrl" name="repo_url" placeholder="https://github.com/usuario/repositorio.git" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="localPath">Ruta local:</label>
+                        <input type="text" id="localPath" name="local_path" placeholder="C:\path\to\local\directory" required>
+                        <button type="button" class="btn-icon" id="browseLocalPath" title="Examinar">
+                            <i class="bi bi-folder"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelClone">Cancelar</button>
+                <button type="submit" form="cloneForm" class="btn btn-primary">Clonar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Repository Modal -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Crear Nuevo Repositorio</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="form-group">
+                        <label for="repoName">Nombre del repositorio:</label>
+                        <input type="text" id="repoName" name="repo_name" placeholder="mi-proyecto" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="repoPath">Ubicación:</label>
+                        <input type="text" id="repoPath" name="repo_path" placeholder="C:\path\to\parent\directory" required>
+                        <button type="button" class="btn-icon" id="browseRepoPath" title="Examinar">
+                            <i class="bi bi-folder"></i>
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="initReadme" name="init_readme">
+                            Crear README.md inicial
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelCreate">Cancelar</button>
+                <button type="submit" form="createForm" class="btn btn-primary">Crear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">
+        <div class="toast-content">
+            <span id="toastMessage"></span>
+            <button id="toastClose" class="toast-close">&times;</button>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

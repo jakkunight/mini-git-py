@@ -1,0 +1,564 @@
+{% extends "base.html" %}
+
+{% block title %}Historial - {{ repository.name }} - Mini Git PyUI{% endblock %}
+
+{% block content %}
+<div class="commit-history-container">
+    <!-- Header -->
+    <div class="history-header-section">
+        <div class="history-breadcrumb">
+            <a href="{{ url_for('home') }}" class="breadcrumb-link">
+                <i class="bi bi-house"></i>
+                Inicio
+            </a>
+            <i class="bi bi-chevron-right"></i>
+            <a href="{{ url_for('repository_view', repo_path=current_path) }}" class="breadcrumb-link">
+                {{ repository.name }}
+            </a>
+            <i class="bi bi-chevron-right"></i>
+            <span class="breadcrumb-current">Historial</span>
+        </div>
+        
+        <div class="history-title-section">
+            <h1 class="history-title">
+                <i class="bi bi-clock-history"></i>
+                Historial de Commits
+            </h1>
+            <p class="history-subtitle">{{ repository.name }}</p>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="history-controls">
+        <div class="controls-left">
+            <div class="branch-selector">
+                <button class="btn btn-outline" id="branchSelector">
+                    <i class="bi bi-git"></i>
+                    <span id="selectedBranch">main</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+            
+            <div class="view-options">
+                <button class="btn btn-outline active" id="listViewBtn">
+                    <i class="bi bi-list"></i>
+                    Lista
+                </button>
+                <button class="btn btn-outline" id="graphViewBtn">
+                    <i class="bi bi-diagram-3"></i>
+                    Grafo
+                </button>
+                <button class="btn btn-outline" id="timelineViewBtn">
+                    <i class="bi bi-calendar3"></i>
+                    Timeline
+                </button>
+            </div>
+        </div>
+        
+        <div class="controls-right">
+            <div class="search-box">
+                <input type="text" id="commitSearch" placeholder="Buscar commits...">
+                <i class="bi bi-search"></i>
+            </div>
+            
+            <div class="filter-options">
+                <button class="btn btn-outline" id="filterBtn">
+                    <i class="bi bi-funnel"></i>
+                    Filtros
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Views -->
+    <div class="history-content">
+        <!-- List View -->
+        <div id="listView" class="view-container active">
+            <div class="commits-list">
+                {% if commits %}
+                    {% for commit in commits %}
+                    <div class="commit-item" data-sha="{{ commit.sha }}">
+                        <div class="commit-timeline">
+                            <div class="timeline-dot"></div>
+                            {% if not loop.last %}
+                            <div class="timeline-line"></div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="commit-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        
+                        <div class="commit-content">
+                            <div class="commit-header">
+                                <h4 class="commit-message">{{ commit.message }}</h4>
+                                <div class="commit-actions">
+                                    <button class="btn-icon" title="Copiar SHA" data-sha="{{ commit.sha }}">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                    <button class="btn-icon" title="Ver cambios">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button class="btn-icon" title="Crear rama desde aquí">
+                                        <i class="bi bi-diagram-3"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="commit-meta">
+                                <div class="commit-author">
+                                    <i class="bi bi-person"></i>
+                                    <span>{{ commit.author }}</span>
+                                    <span class="commit-email">&lt;{{ commit.email }}&gt;</span>
+                                </div>
+                                <div class="commit-date">
+                                    <i class="bi bi-calendar3"></i>
+                                    <span>{{ commit.date }}</span>
+                                </div>
+                                <div class="commit-sha">
+                                    <i class="bi bi-hash"></i>
+                                    <code>{{ commit.sha[:8] }}</code>
+                                </div>
+                            </div>
+                            
+                            {% if commit.parents %}
+                            <div class="commit-parents">
+                                <span class="parents-label">Padres:</span>
+                                {% for parent in commit.parents %}
+                                <code class="parent-sha">{{ parent[:8] }}</code>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-history">
+                        <div class="empty-icon">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <h3>No hay commits</h3>
+                        <p>Este repositorio aún no tiene commits en el historial</p>
+                        <a href="{{ url_for('repository_view', repo_path=current_path) }}" class="btn btn-primary">
+                            <i class="bi bi-arrow-left"></i>
+                            Volver al repositorio
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Load More -->
+            {% if commits and commits|length >= 50 %}
+            <div class="load-more-section">
+                <button class="btn btn-outline" id="loadMoreBtn">
+                    <i class="bi bi-arrow-down-circle"></i>
+                    Cargar más commits
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Graph View -->
+        <div id="graphView" class="view-container">
+            <div class="graph-container">
+                <div class="graph-toolbar">
+                    <div class="toolbar-left">
+                        <button class="btn btn-sm btn-outline" id="zoomInBtn">
+                            <i class="bi bi-zoom-in"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" id="zoomOutBtn">
+                            <i class="bi bi-zoom-out"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" id="resetZoomBtn">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="toolbar-right">
+                        <button class="btn btn-sm btn-outline" id="exportGraphBtn">
+                            <i class="bi bi-download"></i>
+                            Exportar
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="graph-canvas">
+                    <svg id="commitGraph" width="100%" height="600"></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline View -->
+        <div id="timelineView" class="view-container">
+            <div class="timeline-container">
+                <div class="timeline-header">
+                    <h3>Timeline de Commits</h3>
+                    <div class="timeline-controls">
+                        <select id="timelineScale" class="form-select">
+                            <option value="day">Por día</option>
+                            <option value="week">Por semana</option>
+                            <option value="month">Por mes</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="timeline-chart">
+                    <canvas id="timelineChart" width="100%" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Commit Details Modal -->
+<div id="commitDetailsModal" class="modal modal-large">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="modal-title">
+                <h3>Detalles del Commit</h3>
+                <code id="modalCommitSha"></code>
+            </div>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="commit-details">
+                <div class="details-header">
+                    <h4 id="modalCommitMessage"></h4>
+                    <div class="details-meta">
+                        <div class="meta-row">
+                            <span class="meta-label">Autor:</span>
+                            <span id="modalCommitAuthor"></span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">Fecha:</span>
+                            <span id="modalCommitDate"></span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label">SHA:</span>
+                            <code id="modalCommitFullSha"></code>
+                            <button class="btn-icon" id="copyShaBtn" title="Copiar SHA">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="details-content">
+                    <div class="details-tabs">
+                        <button class="details-tab active" data-tab="changes">Cambios</button>
+                        <button class="details-tab" data-tab="files">Archivos</button>
+                        <button class="details-tab" data-tab="stats">Estadísticas</button>
+                    </div>
+                    
+                    <div class="details-panes">
+                        <div id="changes-pane" class="details-pane active">
+                            <div class="changes-summary">
+                                <div class="summary-stats">
+                                    <span class="stat-item">
+                                        <i class="bi bi-plus-circle text-success"></i>
+                                        <span id="additionsCount">0</span> adiciones
+                                    </span>
+                                    <span class="stat-item">
+                                        <i class="bi bi-dash-circle text-danger"></i>
+                                        <span id="deletionsCount">0</span> eliminaciones
+                                    </span>
+                                    <span class="stat-item">
+                                        <i class="bi bi-file-earmark"></i>
+                                        <span id="filesCount">0</span> archivos
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="diff-content" id="diffContent">
+                                <!-- Los diffs se cargarán aquí -->
+                            </div>
+                        </div>
+                        
+                        <div id="files-pane" class="details-pane">
+                            <div class="files-list" id="commitFiles">
+                                <!-- La lista de archivos se cargará aquí -->
+                            </div>
+                        </div>
+                        
+                        <div id="stats-pane" class="details-pane">
+                            <div class="stats-content">
+                                <canvas id="statsChart" width="400" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary">Cerrar</button>
+            <button type="button" class="btn btn-primary">Crear rama desde aquí</button>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Modal -->
+<div id="filterModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Filtrar Commits</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="filter-form">
+                <div class="form-group">
+                    <label for="authorFilter">Autor:</label>
+                    <input type="text" id="authorFilter" placeholder="Filtrar por autor...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="dateFromFilter">Desde:</label>
+                    <input type="date" id="dateFromFilter">
+                </div>
+                
+                <div class="form-group">
+                    <label for="dateToFilter">Hasta:</label>
+                    <input type="date" id="dateToFilter">
+                </div>
+                
+                <div class="form-group">
+                    <label for="messageFilter">Mensaje contiene:</label>
+                    <input type="text" id="messageFilter" placeholder="Buscar en mensajes...">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="clearFilters">Limpiar</button>
+            <button type="button" class="btn btn-primary" id="applyFilters">Aplicar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const repoPath = '{{ current_path }}';
+    let currentView = 'list';
+    
+    // Inicializar vistas
+    initializeViews();
+    
+    // Cargar datos del grafo
+    loadCommitGraphData();
+    
+    // Event listeners
+    document.getElementById('listViewBtn')?.addEventListener('click', () => switchView('list'));
+    document.getElementById('graphViewBtn')?.addEventListener('click', () => switchView('graph'));
+    document.getElementById('timelineViewBtn')?.addEventListener('click', () => switchView('timeline'));
+    
+    // Búsqueda de commits
+    document.getElementById('commitSearch')?.addEventListener('input', debounce(searchCommits, 300));
+    
+    // Copiar SHA
+    document.querySelectorAll('[data-sha]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sha = this.dataset.sha;
+            navigator.clipboard.writeText(sha).then(() => {
+                showToast('SHA copiado al portapapeles', 'success');
+            });
+        });
+    });
+});
+
+function initializeViews() {
+    const viewBtns = document.querySelectorAll('#listViewBtn, #graphViewBtn, #timelineViewBtn');
+    const views = document.querySelectorAll('.view-container');
+    
+    viewBtns.forEach((btn, index) => {
+        btn.addEventListener('click', function() {
+            viewBtns.forEach(b => b.classList.remove('active'));
+            views.forEach(v => v.classList.remove('active'));
+            
+            this.classList.add('active');
+            views[index].classList.add('active');
+        });
+    });
+}
+
+function switchView(viewName) {
+    const views = {
+        'list': document.getElementById('listView'),
+        'graph': document.getElementById('graphView'),
+        'timeline': document.getElementById('timelineView')
+    };
+    
+    const buttons = {
+        'list': document.getElementById('listViewBtn'),
+        'graph': document.getElementById('graphViewBtn'),
+        'timeline': document.getElementById('timelineViewBtn')
+    };
+    
+    // Ocultar todas las vistas
+    Object.values(views).forEach(view => view?.classList.remove('active'));
+    Object.values(buttons).forEach(btn => btn?.classList.remove('active'));
+    
+    // Mostrar vista seleccionada
+    views[viewName]?.classList.add('active');
+    buttons[viewName]?.classList.add('active');
+    
+    currentView = viewName;
+    
+    // Cargar datos específicos de la vista
+    if (viewName === 'graph') {
+        renderCommitGraph();
+    } else if (viewName === 'timeline') {
+        renderTimelineChart();
+    }
+}
+
+async function loadCommitGraphData() {
+    try {
+        const response = await fetch(`/api/repository/${encodeURIComponent(repoPath)}/commit-graph`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            window.commitGraphData = data.data;
+        }
+    } catch (error) {
+        console.error('Error cargando datos del grafo:', error);
+    }
+}
+
+function renderCommitGraph() {
+    if (!window.commitGraphData) return;
+    
+    const svg = d3.select("#commitGraph");
+    svg.selectAll("*").remove(); // Limpiar SVG anterior
+    
+    const width = parseInt(svg.style("width"));
+    const height = parseInt(svg.style("height"));
+    
+    const simulation = d3.forceSimulation(window.commitGraphData.nodes)
+        .force("link", d3.forceLink(window.commitGraphData.links).id(d => d.id))
+        .force("charge", d3.forceManyBody().strength(-300))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+    
+    const link = svg.append("g")
+        .selectAll("line")
+        .data(window.commitGraphData.links)
+        .enter().append("line")
+        .attr("stroke", "#6c757d")
+        .attr("stroke-width", 2);
+    
+    const node = svg.append("g")
+        .selectAll("circle")
+        .data(window.commitGraphData.nodes)
+        .enter().append("circle")
+        .attr("r", 8)
+        .attr("fill", "#007bff")
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended));
+    
+    const label = svg.append("g")
+        .selectAll("text")
+        .data(window.commitGraphData.nodes)
+        .enter().append("text")
+        .text(d => d.label.substring(0, 20) + (d.label.length > 20 ? '...' : ''))
+        .attr("font-size", "10px")
+        .attr("dx", 12)
+        .attr("dy", 4);
+    
+    simulation.on("tick", () => {
+        link
+            .attr("x1", d => d.source.x)
+            .attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x)
+            .attr("y2", d => d.target.y);
+        
+        node
+            .attr("cx", d => d.x)
+            .attr("cy", d => d.y);
+        
+        label
+            .attr("x", d => d.x)
+            .attr("y", d => d.y);
+    });
+    
+    function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+}
+
+function renderTimelineChart() {
+    const ctx = document.getElementById('timelineChart')?.getContext('2d');
+    if (!ctx) return;
+    
+    // Simular datos de timeline
+    const timelineData = {
+        labels: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'],
+        datasets: [{
+            label: 'Commits por mes',
+            data: [12, 19, 3, 5, 2, 3],
+            backgroundColor: 'rgba(0, 123, 255, 0.2)',
+            borderColor: 'rgba(0, 123, 255, 1)',
+            borderWidth: 2,
+            fill: true
+        }]
+    };
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: timelineData,
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Actividad de Commits'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function searchCommits(query) {
+    const commits = document.querySelectorAll('.commit-item');
+    
+    commits.forEach(commit => {
+        const message = commit.querySelector('.commit-message')?.textContent.toLowerCase() || '';
+        const author = commit.querySelector('.commit-author')?.textContent.toLowerCase() || '';
+        
+        const matches = message.includes(query.toLowerCase()) || 
+                       author.includes(query.toLowerCase());
+        
+        commit.style.display = matches ? 'flex' : 'none';
+    });
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+</script>
+{% endblock %}

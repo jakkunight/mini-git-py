@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Mini Git PyUI{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <div class="welcome-content">
+            <h2>Bienvenido a Mini Git PyUI</h2>
+            <p>Gestiona tus repositorios de manera visual y eficiente</p>
+            
+            {% if error %}
+            <div class="alert alert-error">
+                <i class="bi bi-exclamation-triangle"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <div class="action-card" id="quickClone">
+            <div class="action-icon">
+                <i class="bi bi-download"></i>
+            </div>
+            <div class="action-content">
+                <h3>Clonar Repositorio</h3>
+                <p>Clona un repositorio existente desde una URL</p>
+            </div>
+        </div>
+
+        <div class="action-card" id="quickCreate">
+            <div class="action-icon">
+                <i class="bi bi-plus-circle"></i>
+            </div>
+            <div class="action-content">
+                <h3>Crear Repositorio</h3>
+                <p>Crea un nuevo repositorio local</p>
+            </div>
+        </div>
+
+        <div class="action-card" id="quickOpen">
+            <div class="action-icon">
+                <i class="bi bi-folder-open"></i>
+            </div>
+            <div class="action-content">
+                <h3>Abrir Repositorio</h3>
+                <p>Abre un repositorio existente en tu sistema</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repositories List -->
+    <div class="repositories-section">
+        <div class="section-header">
+            <h3>Repositorios Recientes</h3>
+            <div class="section-actions">
+                <button class="btn-icon" id="refreshRepositories" title="Actualizar">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button class="btn-icon" id="toggleView" title="Cambiar vista">
+                    <i class="bi bi-list"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="repositories-grid" id="repositoriesGrid">
+            {% if repositories %}
+                {% for repo in repositories %}
+                <div class="repository-card" data-path="{{ repo.path }}">
+                    <div class="repo-header">
+                        <div class="repo-icon">
+                            {% if repo.type == 'mini-git' %}
+                                <i class="bi bi-git" style="color: #f39c12;"></i>
+                            {% else %}
+                                <i class="bi bi-github" style="color: #6cc644;"></i>
+                            {% endif %}
+                        </div>
+                        <div class="repo-info">
+                            <h4 class="repo-name">{{ repo.name }}</h4>
+                            <p class="repo-path">{{ repo.path }}</p>
+                        </div>
+                        <div class="repo-actions">
+                            <button class="btn-icon" title="Más opciones">
+                                <i class="bi bi-three-dots"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="repo-details">
+                        <div class="repo-meta">
+                            <span class="repo-type">{{ repo.type }}</span>
+                            <span class="repo-modified">{{ repo.last_modified }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="repo-footer">
+                        <button class="btn btn-primary btn-sm open-repo" data-path="{{ repo.path }}">
+                            <i class="bi bi-folder-open"></i>
+                            Abrir
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="bi bi-inbox"></i>
+                    </div>
+                    <h3>No hay repositorios</h3>
+                    <p>Clona o crea tu primer repositorio para comenzar</p>
+                    <div class="empty-actions">
+                        <button class="btn btn-primary" id="emptyClone">
+                            <i class="bi bi-download"></i>
+                            Clonar repositorio
+                        </button>
+                        <button class="btn btn-secondary" id="emptyCreate">
+                            <i class="bi bi-plus-circle"></i>
+                            Crear repositorio
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="activity-section">
+        <div class="section-header">
+            <h3>Actividad Reciente</h3>
+        </div>
+        
+        <div class="activity-list" id="activityList">
+            <!-- La actividad se cargará dinámicamente -->
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i class="bi bi-git"></i>
+                </div>
+                <div class="activity-content">
+                    <p><strong>Sistema iniciado</strong></p>
+                    <span class="activity-time">Hace unos momentos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Cargar repositorios en el sidebar
+    loadRepositoriesSidebar();
+    
+    // Event listeners para cards de acción rápida
+    document.getElementById('quickClone')?.addEventListener('click', () => {
+        document.getElementById('cloneRepoBtn').click();
+    });
+    
+    document.getElementById('quickCreate')?.addEventListener('click', () => {
+        document.getElementById('createRepoBtn').click();
+    });
+    
+    document.getElementById('emptyClone')?.addEventListener('click', () => {
+        document.getElementById('cloneRepoBtn').click();
+    });
+    
+    document.getElementById('emptyCreate')?.addEventListener('click', () => {
+        document.getElementById('createRepoBtn').click();
+    });
+    
+    // Event listeners para abrir repositorios
+    document.querySelectorAll('.open-repo').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const repoPath = this.dataset.path;
+            window.location.href = `/repository/${encodeURIComponent(repoPath)}`;
+        });
+    });
+    
+    // Actualizar repositorios
+    document.getElementById('refreshRepositories')?.addEventListener('click', () => {
+        location.reload();
+    });
+    
+    // Toggle de vista (grid/list)
+    let isGridView = true;
+    document.getElementById('toggleView')?.addEventListener('click', function() {
+        const grid = document.getElementById('repositoriesGrid');
+        const icon = this.querySelector('i');
+        
+        if (isGridView) {
+            grid.classList.add('list-view');
+            icon.className = 'bi bi-grid';
+            isGridView = false;
+        } else {
+            grid.classList.remove('list-view');
+            icon.className = 'bi bi-list';
+            isGridView = true;
+        }
+    });
+});
+
+async function loadRepositoriesSidebar() {
+    try {
+        const response = await fetch('/api/repositories');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const sidebarList = document.getElementById('repositories-list');
+            if (sidebarList) {
+                sidebarList.innerHTML = '';
+                
+                data.data.forEach(repo => {
+                    const repoItem = document.createElement('div');
+                    repoItem.className = 'sidebar-repo-item';
+                    repoItem.innerHTML = `
+                        <div class="sidebar-repo-icon">
+                            <i class="bi bi-${repo.type === 'mini-git' ? 'git' : 'github'}"></i>
+                        </div>
+                        <div class="sidebar-repo-info">
+                            <div class="sidebar-repo-name">${repo.name}</div>
+                            <div class="sidebar-repo-type">${repo.type}</div>
+                        </div>
+                    `;
+                    repoItem.addEventListener('click', () => {
+                        window.location.href = `/repository/${encodeURIComponent(repo.path)}`;
+                    });
+                    sidebarList.appendChild(repoItem);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error cargando repositorios en sidebar:', error);
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Error interno - Mini Git PyUI{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-content">
+        <div class="error-icon">
+            <i class="bi bi-exclamation-circle"></i>
+        </div>
+        
+        <div class="error-details">
+            <h1 class="error-title">500</h1>
+            <h2 class="error-subtitle">Error interno del servidor</h2>
+            <p class="error-message">
+                Ha ocurrido un error inesperado. Nuestro equipo ha sido notificado y está trabajando para solucionarlo.
+            </p>
+            
+            <div class="error-actions">
+                <a href="{{ url_for('home') }}" class="btn btn-primary">
+                    <i class="bi bi-house"></i>
+                    Volver al inicio
+                </a>
+                <button class="btn btn-secondary" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Reintentar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+}
+
+.error-content {
+    max-width: 500px;
+    padding: var(--space-8);
+}
+
+.error-icon {
+    font-size: 5rem;
+    color: var(--error-color);
+    margin-bottom: var(--space-6);
+}
+
+.error-title {
+    font-size: 6rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: var(--space-2);
+}
+
+.error-subtitle {
+    font-size: var(--font-2xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+}
+
+.error-message {
+    font-size: var(--font-lg);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-8);
+    line-height: 1.6;
+}
+
+.error-actions {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+</style>
+{% endblock %}

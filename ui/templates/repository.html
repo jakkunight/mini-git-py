@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repository.name }} - Mini Git PyUI{% endblock %}
+
+{% block content %}
+<div class="repository-container">
+    <!-- Repository Header -->
+    <div class="repo-header-section">
+        <div class="repo-breadcrumb">
+            <a href="{{ url_for('home') }}" class="breadcrumb-link">
+                <i class="bi bi-house"></i>
+                Inicio
+            </a>
+            <i class="bi bi-chevron-right"></i>
+            <span class="breadcrumb-current">{{ repository.name }}</span>
+        </div>
+        
+        <div class="repo-title-section">
+            <div class="repo-title-left">
+                <h1 class="repo-title">
+                    <i class="bi bi-git"></i>
+                    {{ repository.name }}
+                </h1>
+                <p class="repo-path">{{ repository.path }}</p>
+            </div>
+            
+            <div class="repo-title-right">
+                <div class="repo-status" id="repoStatus">
+                    <span class="status-indicator status-clean">
+                        <i class="bi bi-check-circle"></i>
+                        Limpio
+                    </span>
+                </div>
+                
+                <div class="repo-actions">
+                    <button class="btn btn-primary" id="commitBtn">
+                        <i class="bi bi-upload"></i>
+                        Commit
+                    </button>
+                    <button class="btn btn-secondary" id="pullBtn">
+                        <i class="bi bi-download"></i>
+                        Pull
+                    </button>
+                    <button class="btn btn-secondary" id="pushBtn">
+                        <i class="bi bi-upload"></i>
+                        Push
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repository Navigation -->
+    <nav class="repo-nav">
+        <div class="nav-tabs">
+            <a href="#changes" class="nav-tab active" data-tab="changes">
+                <i class="bi bi-file-earmark-diff"></i>
+                Cambios
+                <span class="tab-badge" id="changesBadge">0</span>
+            </a>
+            <a href="#history" class="nav-tab" data-tab="history">
+                <i class="bi bi-clock-history"></i>
+                Historial
+            </a>
+            <a href="#branches" class="nav-tab" data-tab="branches">
+                <i class="bi bi-diagram-3"></i>
+                Ramas
+            </a>
+            <a href="#files" class="nav-tab" data-tab="files">
+                <i class="bi bi-folder"></i>
+                Archivos
+            </a>
+        </div>
+        
+        <div class="nav-actions">
+            <div class="branch-selector">
+                <button class="btn btn-outline" id="branchSelector">
+                    <i class="bi bi-git"></i>
+                    <span id="currentBranch">{{ repository.status.current_branch or 'main' }}</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Changes Tab -->
+        <div id="changes-content" class="tab-pane active">
+            <div class="changes-section">
+                <div class="changes-header">
+                    <h3>Archivos modificados</h3>
+                    <div class="changes-actions">
+                        <button class="btn btn-sm btn-outline" id="stageAllBtn">
+                            <i class="bi bi-plus-circle"></i>
+                            Agregar todos
+                        </button>
+                        <button class="btn btn-sm btn-outline" id="discardAllBtn">
+                            <i class="bi bi-x-circle"></i>
+                            Descartar todos
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="file-changes" id="fileChanges">
+                    <!-- Los cambios se cargarán aquí dinámicamente -->
+                    <div class="empty-changes">
+                        <div class="empty-icon">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                        <h4>No hay cambios</h4>
+                        <p>Tu directorio de trabajo está limpio</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Commit Section -->
+            <div class="commit-section">
+                <div class="commit-form">
+                    <div class="form-group">
+                        <label for="commitMessage">Mensaje del commit:</label>
+                        <textarea id="commitMessage" name="commit_message" placeholder="Describe tus cambios..." rows="3"></textarea>
+                    </div>
+                    
+                    <div class="commit-details">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="authorName">Autor:</label>
+                                <input type="text" id="authorName" name="author" value="Usuario Ejemplo">
+                            </div>
+                            <div class="form-group">
+                                <label for="authorEmail">Email:</label>
+                                <input type="email" id="authorEmail" name="email" value="usuario@ejemplo.com">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="commit-actions">
+                        <button class="btn btn-primary btn-lg" id="makeCommitBtn" disabled>
+                            <i class="bi bi-upload"></i>
+                            Hacer Commit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="history-content" class="tab-pane">
+            <div class="history-section">
+                <div class="history-header">
+                    <h3>Historial de commits</h3>
+                    <div class="history-actions">
+                        <button class="btn btn-sm btn-outline" id="graphViewBtn">
+                            <i class="bi bi-diagram-3"></i>
+                            Vista de grafo
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="commit-list" id="commitList">
+                    {% if repository.recent_commits %}
+                        {% for commit in repository.recent_commits %}
+                        <div class="commit-item">
+                            <div class="commit-avatar">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                            <div class="commit-content">
+                                <div class="commit-message">{{ commit.message }}</div>
+                                <div class="commit-meta">
+                                    <span class="commit-author">{{ commit.author }}</span>
+                                    <span class="commit-date">{{ commit.date }}</span>
+                                    <span class="commit-sha">{{ commit.sha[:8] }}</span>
+                                </div>
+                            </div>
+                            <div class="commit-actions">
+                                <button class="btn-icon" title="Ver cambios">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-commits">
+                            <div class="empty-icon">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <h4>No hay commits</h4>
+                            <p>Haz tu primer commit para comenzar el historial</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Commit Graph -->
+            <div class="graph-section" id="graphSection" style="display: none;">
+                <div class="graph-container">
+                    <canvas id="commitGraph"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Branches Tab -->
+        <div id="branches-content" class="tab-pane">
+            <div class="branches-section">
+                <div class="branches-header">
+                    <h3>Ramas</h3>
+                    <button class="btn btn-primary" id="createBranchBtn">
+                        <i class="bi bi-plus-circle"></i>
+                        Nueva rama
+                    </button>
+                </div>
+                
+                <div class="branches-list" id="branchesList">
+                    {% for branch in repository.branches %}
+                    <div class="branch-item {% if branch == repository.status.current_branch %}active{% endif %}">
+                        <div class="branch-info">
+                            <i class="bi bi-git"></i>
+                            <span class="branch-name">{{ branch }}</span>
+                            {% if branch == repository.status.current_branch %}
+                                <span class="current-indicator">actual</span>
+                            {% endif %}
+                        </div>
+                        <div class="branch-actions">
+                            {% if branch != repository.status.current_branch %}
+                            <button class="btn btn-sm btn-outline checkout-branch" data-branch="{{ branch }}">
+                                <i class="bi bi-arrow-right-circle"></i>
+                                Cambiar
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Tab -->
+        <div id="files-content" class="tab-pane">
+            <div class="files-section">
+                <div class="files-header">
+                    <h3>Explorador de archivos</h3>
+                    <div class="files-actions">
+                        <button class="btn btn-sm btn-outline" id="refreshFilesBtn">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Actualizar
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="file-tree" id="fileTree">
+                    <!-- El árbol de archivos se cargará aquí -->
+                    <div class="file-item">
+                        <i class="bi bi-folder"></i>
+                        <span>src/</span>
+                    </div>
+                    <div class="file-item">
+                        <i class="bi bi-file-earmark-code"></i>
+                        <span>README.md</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Commit Modal -->
+<div id="commitModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirmar Commit</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="commit-summary">
+                <h4>Resumen de cambios:</h4>
+                <div id="commitSummary"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancelCommit">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmCommit">Confirmar Commit</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const repoPath = '{{ current_path }}';
+    
+    // Inicializar tabs
+    initializeTabs();
+    
+    // Cargar estado del repositorio
+    loadRepositoryStatus();
+    
+    // Event listeners
+    document.getElementById('makeCommitBtn')?.addEventListener('click', handleCommit);
+    document.getElementById('graphViewBtn')?.addEventListener('click', toggleGraphView);
+    
+    // Validar mensaje de commit
+    document.getElementById('commitMessage')?.addEventListener('input', function() {
+        const btn = document.getElementById('makeCommitBtn');
+        if (btn) {
+            btn.disabled = this.value.trim().length === 0;
+        }
+    });
+});
+
+function initializeTabs() {
+    const tabs = document.querySelectorAll('.nav-tab');
+    const panes = document.querySelectorAll('.tab-pane');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active class from all tabs and panes
+            tabs.forEach(t => t.classList.remove('active'));
+            panes.forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
+            // Show corresponding pane
+            const targetTab = this.dataset.tab;
+            const targetPane = document.getElementById(targetTab + '-content');
+            if (targetPane) {
+                targetPane.classList.add('active');
+            }
+        });
+    });
+}
+
+async function loadRepositoryStatus() {
+    try {
+        const response = await fetch(`/api/repository/${encodeURIComponent('{{ current_path }}')}/status`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            updateStatusIndicator(data.data);
+            updateChangesBadge(data.data);
+        }
+    } catch (error) {
+        console.error('Error cargando estado del repositorio:', error);
+    }
+}
+
+function updateStatusIndicator(status) {
+    const indicator = document.getElementById('repoStatus');
+    if (!indicator) return;
+    
+    const isClean = status.clean;
+    indicator.innerHTML = isClean ? 
+        '<span class="status-indicator status-clean"><i class="bi bi-check-circle"></i> Limpio</span>' :
+        '<span class="status-indicator status-dirty"><i class="bi bi-exclamation-circle"></i> Cambios pendientes</span>';
+}
+
+function updateChangesBadge(status) {
+    const badge = document.getElementById('changesBadge');
+    if (!badge) return;
+    
+    const totalChanges = (status.modified_files?.length || 0) + 
+                        (status.staged_files?.length || 0) + 
+                        (status.untracked_files?.length || 0);
+    
+    badge.textContent = totalChanges;
+    badge.style.display = totalChanges > 0 ? 'inline' : 'none';
+}
+
+async function handleCommit() {
+    const message = document.getElementById('commitMessage')?.value.trim();
+    const author = document.getElementById('authorName')?.value.trim();
+    const email = document.getElementById('authorEmail')?.value.trim();
+    
+    if (!message) {
+        showToast('El mensaje del commit es requerido', 'error');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('repo_path', '{{ current_path }}');
+        formData.append('commit_message', message);
+        formData.append('author', author);
+        formData.append('email', email);
+        
+        const response = await fetch('/commit', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showToast('Commit realizado exitosamente', 'success');
+            document.getElementById('commitMessage').value = '';
+            loadRepositoryStatus();
+        } else {
+            showToast(data.message || 'Error realizando commit', 'error');
+        }
+    } catch (error) {
+        showToast('Error realizando commit', 'error');
+        console.error('Error:', error);
+    }
+}
+
+function toggleGraphView() {
+    const graphSection = document.getElementById('graphSection');
+    const commitList = document.getElementById('commitList');
+    const btn = document.getElementById('graphViewBtn');
+    
+    if (graphSection.style.display === 'none') {
+        graphSection.style.display = 'block';
+        commitList.style.display = 'none';
+        btn.innerHTML = '<i class="bi bi-list"></i> Vista de lista';
+        loadCommitGraph();
+    } else {
+        graphSection.style.display = 'none';
+        commitList.style.display = 'block';
+        btn.innerHTML = '<i class="bi bi-diagram-3"></i> Vista de grafo';
+    }
+}
+
+async function loadCommitGraph() {
+    try {
+        const response = await fetch(`/api/repository/${encodeURIComponent('{{ current_path }}')}/commit-graph`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            renderCommitGraph(data.data);
+        }
+    } catch (error) {
+        console.error('Error cargando grafo de commits:', error);
+    }
+}
+
+function renderCommitGraph(graphData) {
+    // Implementar visualización del grafo con D3.js o Chart.js
+    console.log('Renderizando grafo de commits:', graphData);
+}
+</script>
+{% endblock %}
