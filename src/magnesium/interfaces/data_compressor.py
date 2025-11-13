@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import override
+import gzip
 
 
 class DataCompressor(ABC):
@@ -13,3 +15,15 @@ class DataCompressor(ABC):
     @abstractmethod
     def decompress(self, data: bytes) -> bytes:
         pass
+
+
+class GzipCompressor(DataCompressor):
+    """Compresor usando gzip"""
+
+    @override
+    def compress(self, data: bytes) -> bytes:
+        return gzip.compress(data)
+
+    @override
+    def decompress(self, data: bytes) -> bytes:
+        return gzip.decompress(data)

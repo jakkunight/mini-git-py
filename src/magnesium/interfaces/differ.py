@@ -1,7 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import override
 
-from ..object_values import Tree
+from ..object_values import (
+    AddedDirEntry,
+    AddedFileEntry,
+    DeletedDirEntry,
+    DeletedFileEntry,
+    FileEntry,
+    DirEntry,
+    Tree,
+    UnchangedDirEntry,
+    UnchangedFileEntry,
+)
 from ..object_values.blob import Blob
 from ..object_values.diffs import (
     AddedLine,
@@ -44,7 +54,19 @@ class MyersDiff(Differ):
 
     @override
     def diff_trees(self, base: Tree, source: Tree) -> TreeDiff:
-        pass
+        """
+        Calcula la diferencia entre dos árboles comparando directorios y archivos.
+        """
+        return TreeDiff(
+            added_files=self._find_added_files(base.files, source.files),
+            deleted_files=self._find_deleted_files(base.files, source.files),
+            unchanged_files=self._find_unchanged_files(base.files, source.files),
+            added_dirs=self._find_added_dirs(base.directories, source.directories),
+            deleted_dirs=self._find_deleted_dirs(base.directories, source.directories),
+            unchanged_dirs=self._find_unchanged_dirs(
+                base.directories, source.directories
+            ),
+        )
 
     def _myers_algorithm(
         self, a: list[str], b: list[str]
@@ -166,3 +188,65 @@ class MyersDiff(Differ):
         return BlobDiff(
             additions=additions, deletions=deletions, unchanged_lines=unchanged
         )
+
+    def _find_added_files(
+        self, base_files: list[FileEntry], source_files: list[FileEntry]
+    ) -> list[AddedFileEntry]:
+        """Encuentra archivos añadidos."""
+        base_names = {f.name for f in base_files}
+        return [AddedFileEntry(f) for f in source_files if f.name not in base_names]
+
+    def _find_deleted_files(
+        self, base_files: list[FileEntry], source_files: list[FileEntry]
+    ) -> list[DeletedFileEntry]:
+        """Encuentra archivos eliminados."""
+        source_names = {f.name for f in source_files}
+        return [DeletedFileEntry(f) for f in base_files if f.name not in source_names]
+
+    def _find_unchanged_files(
+        self, base_files: list[FileEntry], source_files: list[FileEntry]
+    ) -> list[UnchangedFileEntry]:
+        """Encuentra archivos sin cambios."""
+        source_file_map = {f.name: f for f in source_files}
+        unchanged = []
+
+        for base_file in base_files:
+            if base_file.name in source_file_map:
+                source_file = source_file_map[base_file.name]
+                # Considerar unchanged si tienen el mismo nombre y SHA
+                if (
+                    base_file.name == source_file.name
+                    and base_file.sha == source_file.sha
+                ):
+                    unchanged.append(UnchangedFileEntry(base_file))
+
+        return unchanged
+
+    def _find_added_dirs(
+        self, base_dirs: list[DirEntry], source_dirs: list[DirEntry]
+    ) -> list[AddedDirEntry]:
+        """Encuentra directorios añadidos."""
+        base_names = {d.name for d in base_dirs}
+        return [AddedDirEntry(d) for d in source_dirs if d.name not in base_names]
+
+    def _find_deleted_dirs(
+        self, base_dirs: list[DirEntry], source_dirs: list[DirEntry]
+    ) -> list[DeletedDirEntry]:
+        """Encuentra directorios eliminados."""
+        source_names = {d.name for d in source_dirs}
+        return [DeletedDirEntry(d) for d in base_dirs if d.name not in source_names]
+
+    def _find_unchanged_dirs(
+        self, base_dirs: list[DirEntry], source_dirs: list[DirEntry]
+    ) -> list[UnchangedDirEntry]:
+        """Encuentra directorios sin cambios."""
+        source_dir_map = {d.name: d for d in source_dirs}
+        unchanged = []
+
+        for base_dir in base_dirs:
+            if base_dir.name in source_dir_map:
+                source_dir = source_dir_map[base_dir.name]
+                if base_dir.name == source_dir.name and base_dir.sha == source_dir.sha:
+                    unchanged.append(UnchangedDirEntry(base_dir))
+
+        return unchanged

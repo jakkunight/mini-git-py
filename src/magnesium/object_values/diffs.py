@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from models.tree import DirEntry, FileEntry
+from .tree import DirEntry, FileEntry
 
 
 @dataclass

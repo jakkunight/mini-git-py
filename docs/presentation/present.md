@@ -9,37 +9,80 @@ authors:
 ---
 
 <!-- deno-fmt-ignore -->
-Devs en los 80's
+Devs en los 90's
 ================
 
-Imágenes de las carpetas y los zips.
+Durante la década de los 90, el trabajo de los desarrolladores era muy diferente
+al que conocemos hoy. La colaboración en proyectos de software era mucho más
+complicada, y muchos de los problemas que hoy resolvemos con Git simplemente no
+tenían solución estándar.
+
+<!--deno-fmt-ignore-->
+Colaboración limitada
+========================
+
+- Los equipos trabajaban de forma presencial, compartiendo el código en:
+
+- Disquetes
+
+- Carpetas en servidores locales
+
+- E-mails con archivos adjuntos
+
+- Copias llamadas “final”, “final2”, “finalahoraSi”
+
+Todo esto generaba conflictos constantes y pérdida de versiones.
+
+<!-- deno-fmt-ignore -->
+Control de versiones “manual”
+================================
+
+Antes de que existieran herramientas modernas, los devs usaban métodos como:
+
+- Copiar y renombrar carpetas (“Proyecto_v1”, “v1_copia”, “v1_BUENO”, etc.)
+
+- Guardar archivos con fecha en el nombre
+
+- Comentarios en el código diciendo “no tocar esta parte”
+
+Era fácil romper algo y no poder volver atrás.
+
+<!-- deno-fmt-ignore -->
+Nacimiento de los primeros sistemas de control de versiones
+==============================================================
+
+A finales de los 80 y durante los 90 aparecieron los primeros intentos serios de
+manejar versiones:
+
+- RCS (Revision Control System) — Funcionaba por archivo, no por proyecto.
+
+- CVS (Concurrent Versions System) — Permitía colaboración, pero dependía
+  fuertemente de RCS.
+
+- Más tarde, Subversion (SVN) vino a corregir muchas limitaciones.
+
+Estas herramientas introdujeron conceptos que hoy damos por sentado: commits,
+historial, repositorio, archivos versionados…
 
 <!-- deno-fmt-ignore -->
 Sistemas de Control de Versiones
 ================================
 
-Un <span style="color: blue">**Sistema de Control de Versiones**</span>, o SCV,
-es un sistema que permite gestionar los diversos cambios realizados a un
-proyecto a lo largo del tiempo de forma eficiente y conveniente. También se
-puede referir a un conjunto de reglas y procedimientos que hacen más fácil
-llevar un registro de cambios hechos a un proyecto.
+En el desarrollo de software, uno de los mayores desafíos es mantener un control
+organizado sobre los cambios que se realizan a lo largo del tiempo.
 
-Esta clase de sistemas, es la que resuelve la problemática de antes.
-
-<!-- deno-fmt-ignore -->
-Git
-===
-
-<span style="color: red">**Git**</span> es el SCV más popular y utilizado,
-creado por Linus Torvalds. Es usado para controlar versiones de proyectos de
-código. Existen plataformas como GitHub y GitLab que extienden su funcionalidad,
-permitiendo a los desarrolladores compartir código y trabajo.
+Los sistemas de control de versiones (VCS) permiten registrar cada modificación
+en un proyecto, restaurar versiones anteriores y trabajar de forma colaborativa
+sin perder el historial de los cambios realizados.
 
 <!-- deno-fmt-ignore -->
 Git
 ===
 
-![](./images/gitflow.png)
+Es un sistema muy poderoso y complejo, utilizado en prácticamente todos los
+proyectos de software del mundo. Pero dentro de esa complejidad, hay una lógica
+interna basada en estructuras de datos: los blobs, los árboles (trees), los
+commits y las referencias.
 
 <!-- deno-fmt-ignore -->
 Arquitectura
@@ -53,14 +96,9 @@ Tipos de Datos
 Interfaces
 ==========
 
+<!-- end_slide -->
+<!-- jump_to_middle -->
+<!-- text_align: center -->
 <!-- deno-fmt-ignore -->
 Demostración
 ============
-
-<!-- deno-fmt-ignore -->
-¿Preguntas?
-===========
-
-<!-- deno-fmt-ignore -->
-MUCHAS GRACIAS
-==============

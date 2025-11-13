@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from models.hash import Sha256Hash
-from models.email import Email
+from .hash import Sha256Hash
+from .email import Email
 
 
 @dataclass

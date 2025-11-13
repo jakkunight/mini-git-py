@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from models.hash import Sha256Hash
+from .hash import Sha256Hash
 
 
 @dataclass
