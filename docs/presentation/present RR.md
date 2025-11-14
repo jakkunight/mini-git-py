@@ -183,16 +183,198 @@ Arquitectura
 ============
 
 <!-- deno-fmt-ignore -->
+Arquitectura
+============
+
+```mermaid +render
+graph TB
+    %% Estilos
+    classDef interfaceClass fill:#000ACC,stroke:#01579b,stroke-width:2px
+    classDef implementationClass fill:#ff2502,stroke:#4a148c,stroke-width:2px
+    classDef valueClass fill:#0055ff,stroke:#1b5e20,stroke-width:2px
+    classDef toolClass fill:#ff5310,stroke:#e65100,stroke-width:2px
+
+    %% Interfaces principales
+    OR[ObjectRepository<br/>Interface]:::interfaceClass
+    LR[LogRepository<br/>Interface]:::interfaceClass
+    FS[FileStore<br/>Interface]:::interfaceClass
+    DC[DataCompressor<br/>Interface]:::interfaceClass
+    DE[DataEncoder<br/>Interface]:::interfaceClass
+    OPB[ObjectPathBuilder<br/>Interface]:::interfaceClass
+
+    %% Implementaciones
+    LOR[LocalObjectRepository]:::implementationClass
+    LLR[LocalLogRepository]:::implementationClass
+    LFS[LocalFileStore]:::implementationClass
+    GC[GzipCompressor]:::implementationClass
+    UE[Utf8Encoder]:::implementationClass
+    LOPB[LocalObjectPathBuilder]:::implementationClass
+
+    %% Object Values
+    SH[Sha256Hash]:::valueClass
+    B[Blob]:::valueClass
+    T[Tree]:::valueClass
+    C[Commit]:::valueClass
+    E[Email]:::valueClass
+    DE[DirEntry]:::valueClass
+    FE[FileEntry]:::valueClass
+
+    %% Herramientas
+    SMT[SnapshotMenu Tool]:::toolClass
+    SST[SimpleSnapshot Tool]:::toolClass
+    EST[EnhancedSnapshot Tool]:::toolClass
+
+    %% Relaciones de dependencia
+    OR --> LOR
+    LR --> LLR
+    FS --> LFS
+    DC --> GC
+    DE --> UE
+    OPB --> LOPB
+
+    %% Composición de LocalObjectRepository
+    LOR --> LFS
+    LOR --> GC
+    LOR --> UE
+    LOR --> LOPB
+
+    %% Composición de LocalLogRepository
+    LLR --> LFS
+    LLR --> UE
+    LLR --> LOPB
+    LLR --> LOR
+
+    %% Object Values usados por ObjectRepository
+    LOR --> B
+    LOR --> T
+    LOR --> C
+    LOR --> SH
+
+    %% Object Values usados por LogRepository
+    LLR --> C
+    LLR --> SH
+
+    %% Composición de Tree y Commit
+    T --> DE
+    T --> FE
+    DE --> SH
+    FE --> SH
+    C --> E
+    C --> SH
+
+    %% Herramientas que usan los repositorios
+    SMT --> LOR
+    SMT --> LLR
+    SST --> LOR
+    EST --> LOR
+    EST --> LLR
+
+    %% Subgraph para agrupar componentes
+    subgraph "Core Interfaces"
+        OR
+        LR
+        FS
+        DC
+        DE
+        OPB
+    end
+
+    subgraph "Implementations"
+        LOR
+        LLR
+        LFS
+        GC
+        UE
+        LOPB
+    end
+
+    subgraph "Object Values"
+        SH
+        B
+        T
+        C
+        E
+        DE
+        FE
+    end
+
+    subgraph "Tools & Applications"
+        SMT
+        SST
+        EST
+    end
+
+    %% Estilos para los subgraphs
+    class CoreInterfaces,Implementations,ObjectValues,Tools stroke-dasharray
+```
+
+<!-- deno-fmt-ignore -->
 Tipos de Datos
 ==============
+
+```mermaid +render
+graph LR
+    %% Estilos
+    classDef valueClass fill:#0055ff,stroke:#1b5e20,stroke-width:2px
+
+    %% Object Values
+    SH[Sha256Hash]:::valueClass
+    B[Blob]:::valueClass
+    T[Tree]:::valueClass
+    C[Commit]:::valueClass
+    E[Email]:::valueClass
+    DE[DirEntry]:::valueClass
+    FE[FileEntry]:::valueClass
+
+    %% Subgraph para agrupar componentes
+    subgraph "Object Values"
+        SH
+        B
+        T
+        C
+        E
+        DE
+        FE
+    end
+
+    %% Estilos para los subgraphs
+    class CoreInterfaces,Implementations,ObjectValues,Tools stroke-dasharray
+```
 
 <!-- deno-fmt-ignore -->
 Interfaces
 ==========
 
+```mermaid +render
+graph LR
+    %% Estilos
+    classDef interfaceClass fill:#000ACC,stroke:#01579b,stroke-width:2px
+
+    %% Interfaces principales
+    OR[ObjectRepository<br/>Interface]:::interfaceClass
+    LR[LogRepository<br/>Interface]:::interfaceClass
+    FS[FileStore<br/>Interface]:::interfaceClass
+    DC[DataCompressor<br/>Interface]:::interfaceClass
+    DE[DataEncoder<br/>Interface]:::interfaceClass
+    OPB[ObjectPathBuilder<br/>Interface]:::interfaceClass
+
+    %% Subgraph para agrupar componentes
+    subgraph "Core Interfaces"
+        OR
+        LR
+        FS
+        DC
+        DE
+        OPB
+    end
+
+    %% Estilos para los subgraphs
+    class CoreInterfaces,Implementations,ObjectValues,Tools stroke-dasharray
+```
+
 <!-- deno-fmt-ignore -->
 Demostración
-=================
+============
 
 En esta sección, se muestra cómo Magnesium simula un sistema real de control de
 versiones:
