@@ -21,15 +21,16 @@ Luego abra una terminal en la carpeta que desea utilizar como repositorio y
 ejecute el siguiente comando:
 
 ```shell
-mini-git-py init
+python src/mg.py
 ```
 
-Esto debería inicializar el repositorio.
+Esto debería inicializar el repositorio y darle las opciones que tiene.
 
 ## Autores
 
 - Christian Álvarez
 - Eric Gonzáles
+- Raúl Ramírez
 - [Santiago Wu](https://github.com/jakkunight)
 - Lucas Zaracho
 
